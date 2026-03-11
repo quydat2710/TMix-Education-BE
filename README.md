@@ -462,12 +462,6 @@ The application implements comprehensive error handling:
 
 This project is licensed under the UNLICENSED License - see the LICENSE file for details.
 
-## 👥 Support
-
-For support and questions:
-- Create an issue on GitHub
-- Contact: [duongduyy004@gmail.com]
-
 ## 🔄 Version History
 
 - **v0.0.1** - Initial release
