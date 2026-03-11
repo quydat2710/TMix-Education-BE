@@ -57,11 +57,21 @@ export class UserEntity {
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword() {
-    if (this.password) {
+    // Only hash if password exists and is NOT already a bcrypt hash
+    if (this.password && !this.isPasswordHashed(this.password)) {
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
       this.password = await bcrypt.hash(this.password, salt);
     }
+  }
+
+  /**
+   * Check if a password string is already a bcrypt hash.
+   * Bcrypt hashes start with $2a$, $2b$, or $2y$ and are 60 characters long.
+   */
+  private isPasswordHashed(password: string): boolean {
+    const bcryptPattern = /^\$2[aby]\$\d{2}\$.{53}$/;
+    return bcryptPattern.test(password);
   }
 
 }

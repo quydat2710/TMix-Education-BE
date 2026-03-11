@@ -183,6 +183,8 @@ export class UsersService {
 
   async resetPassword(email: string, newPassword: string) {
     const user = await this.findByEmail(email);
+    // Entity có @BeforeUpdate hook sẽ tự động hash password khi save
+    // Nên ở đây chỉ cần set plain text password
     user.password = newPassword;
     return await this.userRepository.save(user);
   }

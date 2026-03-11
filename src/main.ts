@@ -42,7 +42,7 @@ async function bootstrap() {
     prefix: 'api/v',
     defaultVersion: ['1']
   })
-  await app.listen(configService.get('app.port', { infer: true }));
+  await app.listen(configService.get('app.port', { infer: true }), '0.0.0.0');
 }
 bootstrap();
 //test git rebase

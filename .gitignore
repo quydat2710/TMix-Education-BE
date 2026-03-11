@@ -39,3 +39,7 @@ storage
 
 docker-compose.yml
 Dockerfile
+
+# Temporary scripts
+fix-password.ts
+reset-admin-password.ts

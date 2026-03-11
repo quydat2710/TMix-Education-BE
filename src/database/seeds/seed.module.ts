@@ -13,6 +13,10 @@ import { TeacherSeedModule } from './teacher/teacher-seed.module';
 import { ParentSeedModule } from './parent/parent-seed.module';
 import { MenuSeedModule } from './menu/menu-seed.module';
 import { PermissionSeedModule } from './permission/permission-seed.module';
+import { SessionSeedModule } from './session/session-seed.module';
+import { PaymentSeedModule } from './payment/payment-seed.module';
+import { TestSeedModule } from './test/test-seed.module';
+import { TransactionSeedModule } from './transaction/transaction-seed.module';
 
 @Module({
     imports: [
@@ -24,6 +28,10 @@ import { PermissionSeedModule } from './permission/permission-seed.module';
         ParentSeedModule,
         MenuSeedModule,
         PermissionSeedModule,
+        SessionSeedModule,
+        PaymentSeedModule,
+        TestSeedModule,
+        TransactionSeedModule,
         ConfigModule.forRoot({
             isGlobal: true,
             load: [databaseConfig, appConfig],

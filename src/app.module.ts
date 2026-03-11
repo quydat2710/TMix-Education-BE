@@ -52,6 +52,7 @@ import { DataSource } from 'typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronModule } from 'modules/cron/cron.module';
 import { HttpModule } from '@nestjs/axios';
+import { TestsModule } from './modules/tests/tests.module';
 import { CacheConfigService } from 'cache/cache-config.service';
 import paymentConfig from 'config/configs/payment.config';
 import mailerConfig from 'config/configs/mailer.config';
@@ -142,6 +143,7 @@ import { OtpModule } from 'modules/otp/otp.module';
     ArticlesModule,
     CronModule,
     OtpModule,
+    TestsModule,
     // NotificationsModule
   ],
   controllers: [AppController],

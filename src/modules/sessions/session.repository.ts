@@ -70,11 +70,29 @@ export class SessionRepository {
     const startDate = dayjs(classEntity.schedule.start_date);
     const endDate = dayjs(classEntity.schedule.end_date);
 
+    // DEBUG: Log schedule info
+    console.log('=== DEBUG getTodaySession ===');
+    console.log('Class ID:', id);
+    console.log('Class name:', classEntity.name);
+    console.log('Today day():', today.day());
+    console.log('Today format:', today.format('YYYY-MM-DD dddd'));
+    console.log('Schedule days_of_week:', classEntity.schedule.days_of_week);
+    console.log('Schedule days_of_week type:', typeof classEntity.schedule.days_of_week);
+    console.log('Schedule start_date:', classEntity.schedule.start_date);
+    console.log('Schedule end_date:', classEntity.schedule.end_date);
+    console.log('startDate dayjs:', startDate.format('YYYY-MM-DD'));
+    console.log('endDate dayjs:', endDate.format('YYYY-MM-DD'));
+    console.log('today >= startDate:', today >= startDate);
+    console.log('today <= endDate:', today <= endDate);
+
     const checkDay = classEntity.schedule.days_of_week.find(
       (item) => parseInt(item) === today.day(),
     )
       ? true
       : false;
+
+    console.log('checkDay result:', checkDay);
+    console.log('=== END DEBUG ===');
 
     const todayStart = dayjs().startOf('day').toDate();
     const todayEnd = dayjs().endOf('day').toDate();

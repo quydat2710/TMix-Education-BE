@@ -17,6 +17,7 @@ export class TeachersController {
   }
 
   @Get()
+  @Public()
   findAll(@Query() query: QueryDto<FilterTeacherDto, SortTeacherDto>) {
     const page = query?.page;
     const limit = query?.limit;

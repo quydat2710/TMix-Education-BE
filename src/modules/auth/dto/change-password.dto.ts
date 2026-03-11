@@ -4,7 +4,6 @@ import { PASSWORD_REGEX } from "utils/constants";
 export class ChangePasswordDto {
     @IsNotEmpty()
     @IsString()
-    @Matches(PASSWORD_REGEX)
     oldPassword: string;
 
     @IsNotEmpty()
