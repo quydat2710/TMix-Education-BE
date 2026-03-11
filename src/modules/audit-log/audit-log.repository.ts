@@ -187,14 +187,15 @@ export class AuditLogRepository {
 
     private generateUpdateList(oldValue: any, newValue: any) {
         let result = ""
-        if (Array.isArray(newValue) && typeof newValue[0] === 'object') return newValue.map((item, index) => this.generateUpdateList(oldValue[index], item))
+        if (Array.isArray(newValue) && typeof newValue[0] === 'object') return newValue.map((item, index) => this.generateUpdateList(oldValue?.[index], item))
         for (const [key, value] of Object.entries(newValue)) {
             if (value === null || value === undefined) continue;
             if (typeof value === 'object') {
-                result += `<li><strong>${capitalize(key)}</strong>: <span><ul>${this.generateUpdateList(oldValue[key], value)}</ul></span></li>`
+                result += `<li><strong>${capitalize(key)}</strong>: <span><ul>${this.generateUpdateList(oldValue?.[key], value)}</ul></span></li>`
             }
             else {
-                result += `<li><strong>${capitalize(key)}</strong>: <span style="color: #666;">${oldValue[key]}</span> → <span style="color: blue;">${newValue[key]}</span></li>`
+                const oldVal = oldValue?.[key] ?? 'N/A';
+                result += `<li><strong>${capitalize(key)}</strong>: <span style="color: #666;">${oldVal}</span> → <span style="color: blue;">${newValue[key]}</span></li>`
             }
         }
         return result

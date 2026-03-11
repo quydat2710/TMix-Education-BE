@@ -251,10 +251,10 @@ export class DashboardRepository {
   }
 
   async getParentDashboard(parentId: string) {
-    // Get parent with students
+    // Get parent with students and their classes
     const parent = await this.parentRepository.findOne({
       where: { id: parentId },
-      relations: ['students'],
+      relations: ['students', 'students.classes', 'students.classes.class', 'students.classes.class.teacher'],
     });
 
     if (!parent) {
@@ -288,22 +288,59 @@ export class DashboardRepository {
       .where('payment.studentId IN (:...studentIds)', { studentIds })
       .getRawOne();
 
-    // Individual student payment info
-    const studentPayments = await this.paymentRepository
+    // Individual student payment info (LEFT JOIN to include students without payments)
+    const paymentsByStudent = await this.paymentRepository
       .createQueryBuilder('payment')
       .select('payment.studentId', 'studentId')
-      .addSelect('student.name', 'studentName')
-      .addSelect('student.email', 'studentEmail')
       .addSelect('SUM(payment.totalAmount)', 'totalAmount')
       .addSelect('SUM(payment.paidAmount)', 'totalPaidAmount')
       .addSelect(
         'SUM(payment.totalAmount - payment.paidAmount)',
         'totalUnPaidAmount',
       )
-      .innerJoin('payment.student', 'student')
       .where('payment.studentId IN (:...studentIds)', { studentIds })
-      .groupBy('payment.studentId, student.name, student.email')
+      .groupBy('payment.studentId')
       .getRawMany();
+
+    // Create a map of studentId -> payment info
+    const paymentMap = new Map(
+      paymentsByStudent.map((p) => [p.studentId, p]),
+    );
+
+    // Build studentPayments from ALL students (not just those with payments)
+    const studentPayments = parent.students.map((student) => {
+      const payment = paymentMap.get(student.id);
+      const activeClasses = student.classes?.filter(
+        (cs) => cs.class?.status === 'active',
+      ) || [];
+
+      // Build schedule info from classes
+      const schedules = student.classes?.map((cs) => ({
+        class: cs.class ? {
+          name: cs.class.name,
+          grade: cs.class.grade,
+          year: cs.class.year,
+          room: cs.class.room,
+          schedule: cs.class.schedule,
+          status: cs.class.status,
+        } : null,
+        teacher: cs.class?.teacher ? {
+          name: cs.class.teacher.name,
+        } : null,
+        isActive: cs.class?.status === 'active',
+      })) || [];
+
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        studentEmail: student.email,
+        totalAmount: Number(payment?.totalAmount) || 0,
+        totalPaidAmount: Number(payment?.totalPaidAmount) || 0,
+        totalUnPaidAmount: Number(payment?.totalUnPaidAmount) || 0,
+        totalActiveClasses: activeClasses.length,
+        schedules,
+      };
+    });
 
     return {
       totalChildren: parent.students?.length || 0,
@@ -312,14 +349,7 @@ export class DashboardRepository {
         totalPaidAmount: Number(paymentStats?.totalPaidAmount) || 0,
         totalUnPaidAmount: Number(paymentStats?.totalUnPaidAmount) || 0,
       },
-      studentPayments: studentPayments.map((payment) => ({
-        studentId: payment.studentId,
-        studentName: payment.studentName,
-        studentEmail: payment.studentEmail,
-        totalAmount: Number(payment.totalAmount) || 0,
-        totalPaidAmount: Number(payment.totalPaidAmount) || 0,
-        totalUnPaidAmount: Number(payment.totalUnPaidAmount) || 0,
-      })),
+      studentPayments,
     };
   }
 }
