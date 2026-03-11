@@ -147,7 +147,7 @@ export class StudentRepository {
   async getSchedule(id: Student['id']) {
     const entity = await this.studentRepository.findOne({
       where: { id },
-      relations: ['classes.class'],
+      relations: ['classes.class', 'classes.class.teacher'],
     });
     return StudentMapper.toDomain(entity).classes;
   }

@@ -98,15 +98,6 @@ export class TestsController {
     }
 
     /**
-     * Get test for student (without correct answers)
-     * GET /tests/student/:id
-     */
-    @Get('student/:id')
-    getTestForStudent(@UserInfo() user: any, @Param('id') id: string) {
-        return this.testsService.getTestForStudent(id, user.id);
-    }
-
-    /**
      * Get student's attempt history
      * GET /tests/student/attempts
      */
@@ -117,6 +108,15 @@ export class TestsController {
         @Query('limit') limit: number = 10,
     ) {
         return this.testsService.getStudentAttempts(user.id, +page, +limit);
+    }
+
+    /**
+     * Get test for student (without correct answers)
+     * GET /tests/student/:id
+     */
+    @Get('student/:id')
+    getTestForStudent(@UserInfo() user: any, @Param('id') id: string) {
+        return this.testsService.getTestForStudent(id, user.id);
     }
 
     /**

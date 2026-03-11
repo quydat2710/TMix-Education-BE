@@ -31,6 +31,11 @@ export class StudentMapper {
                     section: item.class.section,
                     room: item.class.room,
                     schedule: item.class.schedule,
+                    status: item.class.status as 'active' | 'upcoming' | 'closed',
+                    teacher: item.class.teacher ? {
+                        id: item.class.teacher.id,
+                        name: item.class.teacher.name,
+                    } : null,
                 },
                 isActive: item.isActive
             }))
