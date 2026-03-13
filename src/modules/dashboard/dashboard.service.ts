@@ -3,7 +3,7 @@ import { DashboardRepository } from './dashboard.repository';
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly dashboardRepository: DashboardRepository) {}
+  constructor(private readonly dashboardRepository: DashboardRepository) { }
 
   getAdminDashboard() {
     return this.dashboardRepository.getAdminDashboard();
@@ -19,5 +19,9 @@ export class DashboardService {
 
   getParentDashboard(parentId: string) {
     return this.dashboardRepository.getParentDashboard(parentId);
+  }
+
+  getMonthlyRevenue(year: number) {
+    return this.dashboardRepository.getMonthlyRevenue(year);
   }
 }

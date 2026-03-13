@@ -66,15 +66,27 @@ export class DashboardRepository {
 
     // Recent payments (top 5)
     const recentPayments = await this.paymentRepository.find({
-      relations: ['student'],
+      relations: ['student', 'student.parent', 'class'],
       order: { year: 'DESC', month: 'DESC' },
       take: 5,
     });
 
     const recentlyPayment = recentPayments.map((payment) => ({
+      id: payment.id,
       name: payment.student?.name || 'Unknown',
       paidAmount: payment.paidAmount,
+      totalAmount: payment.totalAmount,
       status: payment.status,
+      month: payment.month,
+      year: payment.year,
+      totalLessons: payment.totalLessons,
+      discountPercent: payment.discountPercent,
+      className: payment.class?.name || 'N/A',
+      parentName: payment.student?.parent?.name || 'Chưa có',
+      parentPhone: payment.student?.parent?.phone || 'N/A',
+      parentEmail: payment.student?.parent?.email || 'N/A',
+      studentEmail: payment.student?.email || 'N/A',
+      studentPhone: payment.student?.phone || 'N/A',
     }));
 
     // Recent teacher payments (top 5)
@@ -350,6 +362,59 @@ export class DashboardRepository {
         totalUnPaidAmount: Number(paymentStats?.totalUnPaidAmount) || 0,
       },
       studentPayments,
+    };
+  }
+
+  async getMonthlyRevenue(year: number) {
+    // Doanh thu học phí theo tháng (đã thu được)
+    const revenueRaw = await this.paymentRepository
+      .createQueryBuilder('payment')
+      .select('payment.month', 'month')
+      .addSelect('SUM(payment.paidAmount)', 'revenue')
+      .addSelect('SUM(payment.totalAmount)', 'totalRevenue')
+      .where('payment.year = :year', { year })
+      .groupBy('payment.month')
+      .orderBy('payment.month', 'ASC')
+      .getRawMany();
+
+    // Chi phí lương giáo viên theo tháng (đã trả)
+    const expenseRaw = await this.teacherPaymentRepository
+      .createQueryBuilder('tp')
+      .select('tp.month', 'month')
+      .addSelect('SUM(tp.paidAmount)', 'expense')
+      .addSelect('SUM(tp.totalAmount)', 'totalExpense')
+      .where('tp.year = :year', { year })
+      .groupBy('tp.month')
+      .orderBy('tp.month', 'ASC')
+      .getRawMany();
+
+    // Map dữ liệu vào 12 tháng
+    const monthlyData = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1;
+      const rev = revenueRaw.find(r => Number(r.month) === month);
+      const exp = expenseRaw.find(e => Number(e.month) === month);
+      return {
+        month,
+        monthName: `Th${month}`,
+        revenue: Number(rev?.revenue) || 0,
+        totalRevenue: Number(rev?.totalRevenue) || 0,
+        expense: Number(exp?.expense) || 0,
+        totalExpense: Number(exp?.totalExpense) || 0,
+        profit: (Number(rev?.revenue) || 0) - (Number(exp?.expense) || 0),
+      };
+    });
+
+    const totalRevenue = monthlyData.reduce((s, m) => s + m.revenue, 0);
+    const totalExpense = monthlyData.reduce((s, m) => s + m.expense, 0);
+
+    return {
+      year,
+      monthlyData,
+      summary: {
+        totalRevenue,
+        totalExpense,
+        profit: totalRevenue - totalExpense,
+      },
     };
   }
 }

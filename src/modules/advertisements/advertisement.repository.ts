@@ -115,6 +115,6 @@ export class AdvertisementRepository {
             order: { 'priority': "ASC" }
         })
 
-        return AdvertisementMapper.toDomain(entity)
+        return entity ? AdvertisementMapper.toDomain(entity) : null;
     }
 }

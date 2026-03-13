@@ -20,9 +20,10 @@ export class RegistrationRepository {
   async create(
     data: Omit<Registration, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>,
   ): Promise<Registration> {
-    // Tìm class từ classId
+    // Tìm class từ classId (hỗ trợ cả DTO gửi classId và domain gửi class.id)
+    const classIdValue = (data as any).classId || data.class?.id;
     const classEntity = await this.classRepository.findOne({
-      where: { id: data.class?.id },
+      where: { id: classIdValue },
     });
 
     if (!classEntity) {
@@ -147,7 +148,7 @@ export class RegistrationRepository {
       relations: ['class'],
     });
 
-    return RegistrationMapper.toDomain(updatedEntity);
+    return updatedEntity ? RegistrationMapper.toDomain(updatedEntity) : null;
   }
 
   async remove(id: Registration['id']): Promise<void> {

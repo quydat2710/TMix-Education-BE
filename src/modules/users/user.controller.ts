@@ -1,4 +1,4 @@
-import { Body, Controller, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Param, Patch, Post } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { Public } from "@/decorator/customize.decorator";
@@ -6,6 +6,7 @@ import { UserInfo } from "@/decorator/customize.decorator";
 import { User } from "./user.domain";
 import { UploadAvatarDto } from "./dto/upload-avatar.dto";
 import { AssignRoleDto } from "./dto/assign-role.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
 
 @Controller('user')
 export class UsersController {
@@ -27,5 +28,13 @@ export class UsersController {
         @Body() assignRoleDto: AssignRoleDto
     ) {
         return this.assignRole(assignRoleDto);
+    }
+
+    @Patch(':id')
+    updateProfile(
+        @Param('id') id: string,
+        @Body() updateUserDto: UpdateUserDto
+    ) {
+        return this.usersService.updateProfile(id, updateUserDto);
     }
 }

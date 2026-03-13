@@ -20,7 +20,7 @@ export class StudentsService {
     private studentRepository: StudentRepository,
     private usersService: UsersService,
     private i18nSerivce: I18nService<I18nTranslations>,
-  ) {}
+  ) { }
   async create(createStudentDto: CreateStudentDto) {
     await this.usersService.isEmailExist(createStudentDto?.email);
     return this.studentRepository.create(createStudentDto);
@@ -70,5 +70,9 @@ export class StudentsService {
   }
   async getStatistics() {
     return this.studentRepository.getStatistics();
+  }
+
+  async getMonthlyChanges(year: number) {
+    return this.studentRepository.getMonthlyChanges(year);
   }
 }

@@ -18,6 +18,15 @@ export class AuthController {
   ) { }
 
 
+  // Unified login endpoint - accepts all roles
+  @UseGuards(LocalAuthGuard)
+  @Public()
+  @Post('login')
+  loginUnified(@Req() req, @Res({ passthrough: true }) response: Response) {
+    return this.authService.login(req.user, response);
+  }
+
+  // Legacy endpoints - kept for backward compatibility
   @UseGuards(LocalAuthGuard)
   @Public()
   @Post('user/login')

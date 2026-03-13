@@ -12,6 +12,7 @@ import { SessionSeedService } from './session/session-seed.service';
 import { PaymentSeedService } from './payment/payment-seed.service';
 import { TestSeedService } from './test/test-seed.service';
 import { TransactionSeedService } from './transaction/transaction-seed.service';
+import { TeacherPaymentSeedService } from './teacher-payment/teacher-payment-seed.service';
 import { AuditSubscriber } from 'subscribers/audit-log.subscriber';
 
 const runSeed = async () => {
@@ -48,6 +49,9 @@ const runSeed = async () => {
 
     console.log('Seeding payments...')
     await app.get(PaymentSeedService).run();
+
+    console.log('Seeding teacher payments...')
+    await app.get(TeacherPaymentSeedService).run();
 
     console.log('Seeding tests & attempts...')
     await app.get(TestSeedService).run();

@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { ResponseMessage } from '@/decorator/customize.decorator';
 
@@ -10,6 +10,12 @@ export class DashboardController {
   @ResponseMessage('dashboard.SUCCESS.GET_ADMIN_DASHBOARD')
   getAdminDashboard() {
     return this.dashboardService.getAdminDashboard();
+  }
+
+  @Get('monthly-revenue')
+  getMonthlyRevenue(@Query('year') year?: string) {
+    const yearNum = year ? parseInt(year) : new Date().getFullYear();
+    return this.dashboardService.getMonthlyRevenue(yearNum);
   }
 
   @Get('teacher/:teacherId')

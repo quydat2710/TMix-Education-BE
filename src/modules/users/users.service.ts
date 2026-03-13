@@ -131,6 +131,43 @@ export class UsersService {
     await config.repo.save(entity);
   }
 
+  async updateProfile(userId: User['id'], updateData: { name?: string; phone?: string; gender?: string; address?: string; dayOfBirth?: Date }) {
+    // Find user in all repositories
+    const user = await this.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException(this.i18nService.t('user.FAIL.NOT_FOUND'));
+    }
+
+    const roleId = user.role?.id;
+    const repositoryMap: Record<string, Repository<any>> = {
+      [RoleEnum.admin]: this.userRepository,
+      [RoleEnum.teacher]: this.teacherRepository,
+      [RoleEnum.parent]: this.parentRepository,
+      [RoleEnum.student]: this.studentRepository,
+    };
+
+    const repository = repositoryMap[roleId];
+    if (!repository) {
+      throw new BadRequestException('Invalid role');
+    }
+
+    // Update only allowed fields
+    const allowedFields: Record<string, any> = {};
+    if (updateData.name !== undefined) allowedFields.name = updateData.name;
+    if (updateData.phone !== undefined) allowedFields.phone = updateData.phone;
+    if (updateData.gender !== undefined) allowedFields.gender = updateData.gender;
+    if (updateData.address !== undefined) allowedFields.address = updateData.address;
+    if (updateData.dayOfBirth !== undefined) allowedFields.dayOfBirth = updateData.dayOfBirth;
+
+    if (Object.keys(allowedFields).length === 0) {
+      throw new BadRequestException('No valid fields to update');
+    }
+
+    await repository.update({ id: userId }, allowedFields);
+
+    return await repository.findOne({ where: { id: userId }, relations: ['role'] });
+  }
+
   async findUserById(userId: User['id']) {
     const [user, parent, student, teacher] = await Promise.all([
       this.userRepository.findOne({ where: { id: userId }, relations: ['role'] }),

@@ -17,6 +17,7 @@ import { SessionSeedModule } from './session/session-seed.module';
 import { PaymentSeedModule } from './payment/payment-seed.module';
 import { TestSeedModule } from './test/test-seed.module';
 import { TransactionSeedModule } from './transaction/transaction-seed.module';
+import { TeacherPaymentSeedModule } from './teacher-payment/teacher-payment-seed.module';
 
 @Module({
     imports: [
@@ -32,6 +33,7 @@ import { TransactionSeedModule } from './transaction/transaction-seed.module';
         PaymentSeedModule,
         TestSeedModule,
         TransactionSeedModule,
+        TeacherPaymentSeedModule,
         ConfigModule.forRoot({
             isGlobal: true,
             load: [databaseConfig, appConfig],

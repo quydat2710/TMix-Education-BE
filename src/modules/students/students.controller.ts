@@ -18,7 +18,7 @@ import { Student } from './student.domain';
 
 @Controller('students')
 export class StudentsController {
-  constructor(private readonly studentsService: StudentsService) {}
+  constructor(private readonly studentsService: StudentsService) { }
 
   @Post()
   @ResponseMessage('student.SUCCESS.CREATE_A_STUDENT')
@@ -43,6 +43,12 @@ export class StudentsController {
   @Get('statistics')
   getStatistics() {
     return this.studentsService.getStatistics();
+  }
+
+  @Get('monthly-changes')
+  getMonthlyChanges(@Query('year') year?: string) {
+    const yearNum = year ? parseInt(year) : new Date().getFullYear();
+    return this.studentsService.getMonthlyChanges(yearNum);
   }
 
   @Get('schedule/:id')

@@ -186,4 +186,61 @@ export class StudentRepository {
       decreaseStudentsInMonth,
     };
   }
+
+  async getMonthlyChanges(year: number) {
+    // Học sinh mới theo tháng (dựa trên createdAt)
+    const increaseRaw = await this.studentRepository
+      .createQueryBuilder('student')
+      .select('EXTRACT(MONTH FROM student.createdAt)', 'month')
+      .addSelect('EXTRACT(YEAR FROM student.createdAt)', 'year')
+      .addSelect('COUNT(*)', 'count')
+      .where('EXTRACT(YEAR FROM student.createdAt) = :year', { year })
+      .groupBy('EXTRACT(YEAR FROM student.createdAt)')
+      .addGroupBy('EXTRACT(MONTH FROM student.createdAt)')
+      .orderBy('month', 'ASC')
+      .getRawMany();
+
+    // Học sinh rời đi theo tháng (dựa trên deletedAt)
+    const decreaseRaw = await this.studentRepository
+      .createQueryBuilder('student')
+      .withDeleted()
+      .select('EXTRACT(MONTH FROM student.deletedAt)', 'month')
+      .addSelect('EXTRACT(YEAR FROM student.deletedAt)', 'year')
+      .addSelect('COUNT(*)', 'count')
+      .where('student.deletedAt IS NOT NULL')
+      .andWhere('EXTRACT(YEAR FROM student.deletedAt) = :year', { year })
+      .groupBy('EXTRACT(YEAR FROM student.deletedAt)')
+      .addGroupBy('EXTRACT(MONTH FROM student.deletedAt)')
+      .orderBy('month', 'ASC')
+      .getRawMany();
+
+    const increase = increaseRaw.map(item => ({
+      year: parseInt(item.year),
+      month: parseInt(item.month),
+      count: parseInt(item.count),
+    }));
+
+    const decrease = decreaseRaw.map(item => ({
+      year: parseInt(item.year),
+      month: parseInt(item.month),
+      count: parseInt(item.count),
+    }));
+
+    const totalIncrease = increase.reduce((sum, item) => sum + item.count, 0);
+    const totalDecrease = decrease.reduce((sum, item) => sum + item.count, 0);
+
+    return {
+      increase,
+      decrease,
+      summary: {
+        totalIncrease,
+        totalDecrease,
+        netChange: totalIncrease - totalDecrease,
+        period: {
+          startDate: `${year}-01-01`,
+          endDate: `${year}-12-31`,
+        },
+      },
+    };
+  }
 }
