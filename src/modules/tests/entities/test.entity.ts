@@ -4,7 +4,7 @@ import { ClassEntity } from "modules/classes/entities/class.entity";
 import { TestAttemptEntity } from "./test-attempt.entity";
 
 /**
- * Multiple Choice Question (stored as JSONB inside Test)
+ * Multiple Choice Question (Reading + Listening)
  */
 export class MCQuestion {
     @Column()
@@ -24,6 +24,34 @@ export class MCQuestion {
 
     @Column({ default: 1 })
     points: number;
+
+    @Column({ nullable: true })
+    audioUrl: string; // Per-question audio (listening)
+}
+
+/**
+ * Writing Question
+ */
+export class WritingQuestion {
+    id: string;
+    prompt: string;
+    minWords?: number;
+    maxWords?: number;
+    sampleAnswer?: string;
+    rubric?: string; // Grading criteria for AI
+    points: number;
+}
+
+/**
+ * Speaking Question
+ */
+export class SpeakingQuestion {
+    id: string;
+    prompt: string; // What student should say/read
+    referenceText: string; // Correct text for comparison
+    audioUrl?: string; // Reference pronunciation audio
+    duration?: number; // Max recording time in seconds
+    points: number;
 }
 
 @Entity('tests')
@@ -36,6 +64,9 @@ export class TestEntity {
 
     @Column({ nullable: true })
     description: string;
+
+    @Column({ default: 'reading' })
+    skillType: string; // 'reading' | 'listening' | 'speaking' | 'writing'
 
     @Column()
     classId: string;
@@ -53,7 +84,16 @@ export class TestEntity {
     passingScore: number; // percentage 0-100
 
     @Column('jsonb', { default: [] })
-    questions: MCQuestion[];
+    questions: any[]; // MCQuestion[] | WritingQuestion[] | SpeakingQuestion[]
+
+    @Column({ nullable: true })
+    audioUrl: string; // Main audio URL (listening test)
+
+    @Column({ type: 'text', nullable: true })
+    passage: string; // Reading passage or Writing prompt
+
+    @Column({ type: 'text', nullable: true })
+    speakingPrompt: string; // Speaking test general prompt
 
     @Column({ enum: ['draft', 'published', 'archived'], default: 'draft' })
     status: string;

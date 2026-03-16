@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Put, Param, Delete, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Put, Param, Delete, Query, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TestsService } from './tests.service';
 import { CreateTestDto } from './dto/create-test.dto';
 import { UpdateTestDto } from './dto/update-test.dto';
 import { SubmitTestDto } from './dto/submit-test.dto';
+import { SubmitWritingDto } from './dto/submit-skill.dto';
 import { UserInfo } from '@/decorator/customize.decorator';
 
 @Controller('tests')
@@ -120,7 +122,7 @@ export class TestsController {
     }
 
     /**
-     * Submit test answers for grading
+     * Submit test answers for grading (MC - Reading/Listening)
      * POST /tests/:id/submit
      */
     @Post(':id/submit')
@@ -133,12 +135,61 @@ export class TestsController {
     }
 
     /**
+     * Submit writing test for AI grading
+     * POST /tests/:id/submit/writing
+     */
+    @Post(':id/submit/writing')
+    submitWriting(
+        @UserInfo() user: any,
+        @Param('id') id: string,
+        @Body() submitDto: SubmitWritingDto,
+    ) {
+        return this.testsService.submitWriting(id, user.id, submitDto);
+    }
+
+    /**
+     * Submit speaking test for AI grading (upload audio file)
+     * POST /tests/:id/submit/speaking
+     */
+    @Post(':id/submit/speaking')
+    @UseInterceptors(FileInterceptor('audio'))
+    submitSpeaking(
+        @UserInfo() user: any,
+        @Param('id') id: string,
+        @UploadedFile() file: Express.Multer.File,
+    ) {
+        return this.testsService.submitSpeaking(id, user.id, file);
+    }
+
+    /**
+     * Get AI feedback for an attempt
+     * GET /tests/attempts/:id/ai-feedback
+     */
+    @Get('attempts/:id/ai-feedback')
+    getAiFeedback(@Param('id') id: string) {
+        return this.testsService.getAiFeedback(id);
+    }
+
+    /**
      * Get attempt result by ID
      * GET /tests/attempts/:id
      */
     @Get('attempts/:id')
     getAttempt(@Param('id') id: string) {
         return this.testsService.getAttemptById(id);
+    }
+
+    /**
+     * Teacher review: update attempt score/feedback
+     * PATCH /tests/attempts/:id/review
+     */
+    @Patch('attempts/:id/review')
+    reviewAttempt(
+        @UserInfo() user: any,
+        @Param('id') id: string,
+        @Body() body: { score?: number; percentage?: number; passed?: boolean; teacherFeedback?: string },
+    ) {
+        return this.testsService.reviewAttempt(id, user.id, body);
     }
 
     // ============================================

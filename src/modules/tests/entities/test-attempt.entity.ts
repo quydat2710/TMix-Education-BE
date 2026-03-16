@@ -14,7 +14,7 @@ export class TestAttemptEntity {
     studentId: string;
 
     @Column('jsonb', { default: [] })
-    answers: number[]; // Student's selected option indices
+    answers: any[]; // number[] (MC) | WritingAnswer[] | SpeakingAnswer[]
 
     @Column({ type: 'float', default: 0 })
     score: number; // Points earned
@@ -36,6 +36,18 @@ export class TestAttemptEntity {
 
     @Column({ type: 'timestamp', nullable: true })
     gradedAt: Date;
+
+    @Column('jsonb', { nullable: true })
+    aiGrading: any; // WritingGrading | SpeakingGrading — AI feedback
+
+    @Column({ type: 'text', nullable: true })
+    writingResponse: string; // Student's essay text
+
+    @Column({ nullable: true })
+    recordingUrl: string; // Student's speaking recording URL
+
+    @Column({ type: 'text', nullable: true })
+    transcription: string; // STT result from recording
 
     @ManyToOne(() => TestEntity, test => test.attempts)
     @JoinColumn({ name: 'testId' })

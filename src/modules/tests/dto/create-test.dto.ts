@@ -21,6 +21,10 @@ class CreateMCQuestionDto {
     @IsNumber()
     @Min(1)
     points: number;
+
+    @IsOptional()
+    @IsString()
+    audioUrl?: string; // Per-question audio (listening)
 }
 
 export class CreateTestDto {
@@ -30,6 +34,10 @@ export class CreateTestDto {
     @IsOptional()
     @IsString()
     description?: string;
+
+    @IsOptional()
+    @IsString()
+    skillType?: string; // 'reading' | 'listening' | 'speaking' | 'writing' (default: reading)
 
     @IsString()
     classId: string;
@@ -44,9 +52,19 @@ export class CreateTestDto {
     passingScore: number; // percentage
 
     @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => CreateMCQuestionDto)
-    questions: CreateMCQuestionDto[];
+    questions: any[]; // MCQuestion[] | WritingQuestion[] | SpeakingQuestion[]
+
+    @IsOptional()
+    @IsString()
+    passage?: string; // Reading passage or Writing prompt
+
+    @IsOptional()
+    @IsString()
+    speakingPrompt?: string; // Speaking test general prompt
+
+    @IsOptional()
+    @IsString()
+    audioUrl?: string; // Main audio URL (listening)
 
     @IsOptional()
     @IsEnum(['draft', 'published'])
