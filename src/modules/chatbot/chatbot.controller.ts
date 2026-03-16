@@ -55,15 +55,9 @@ Guidelines:
 
         try {
             const reply = await this.groqService.chatCompletion(messages);
-            return {
-                success: true,
-                data: { reply },
-            };
+            return { reply };
         } catch (error: any) {
-            return {
-                success: false,
-                message: error.message || 'Lỗi AI',
-            };
+            return { reply: `Xin lỗi, mình gặp lỗi: ${error.message}. Hãy thử lại nhé!` };
         }
     }
 }
