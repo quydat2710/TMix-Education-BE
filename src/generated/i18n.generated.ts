@@ -48,6 +48,7 @@ export type I18nTranslations = {
     "dashboard": {
         "SUCCESS": {
             "GET_ADMIN_DASHBOARD": string;
+            "GET_ALL_PAYMENTS": string;
             "GET_TEACHER_DASHBOARD": string;
             "GET_STUDENT_DASHBOARD": string;
             "GET_PARENT_DASHBOARD": string;

@@ -18,6 +18,22 @@ export class DashboardController {
     return this.dashboardService.getMonthlyRevenue(yearNum);
   }
 
+  @Get('all-payments')
+  @ResponseMessage('dashboard.SUCCESS.GET_ALL_PAYMENTS')
+  getAllPaymentsForDashboard(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.dashboardService.getAllPaymentsForDashboard({
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 10,
+      status: status || 'all',
+      search: search || '',
+    });
+  }
+
   @Get('teacher/:teacherId')
   @ResponseMessage('dashboard.SUCCESS.GET_TEACHER_DASHBOARD')
   getTeacherDashboard(@Param('teacherId') teacherId: string) {

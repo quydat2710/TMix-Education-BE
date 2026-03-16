@@ -365,6 +365,73 @@ export class DashboardRepository {
     };
   }
 
+  async getAllPaymentsForDashboard(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) {
+    const page = params.page || 1;
+    const limit = params.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const qb = this.paymentRepository
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.student', 'student')
+      .leftJoinAndSelect('student.parent', 'parent')
+      .leftJoinAndSelect('payment.class', 'class');
+
+    // Filter by status
+    if (params.status && params.status !== 'all') {
+      qb.andWhere('payment.status = :status', { status: params.status });
+    }
+
+    // Search by student name or parent name
+    if (params.search && params.search.trim()) {
+      qb.andWhere(
+        '(LOWER(student.name) LIKE LOWER(:search) OR LOWER(parent.name) LIKE LOWER(:search))',
+        { search: `%${params.search.trim()}%` },
+      );
+    }
+
+    qb.orderBy('payment.year', 'DESC')
+      .addOrderBy('payment.month', 'DESC')
+      .addOrderBy('payment.status', 'ASC');
+
+    const totalItems = await qb.getCount();
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const payments = await qb.skip(skip).take(limit).getMany();
+
+    const result = payments.map((payment) => ({
+      id: payment.id,
+      name: payment.student?.name || 'Unknown',
+      paidAmount: payment.paidAmount,
+      totalAmount: payment.totalAmount,
+      discountPercent: payment.discountPercent,
+      status: payment.status,
+      month: payment.month,
+      year: payment.year,
+      totalLessons: payment.totalLessons,
+      className: payment.class?.name || 'N/A',
+      parentName: payment.student?.parent?.name || 'Chưa có',
+      parentPhone: payment.student?.parent?.phone || 'N/A',
+      parentEmail: payment.student?.parent?.email || 'N/A',
+      studentEmail: payment.student?.email || 'N/A',
+      studentPhone: payment.student?.phone || 'N/A',
+    }));
+
+    return {
+      result,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+      },
+    };
+  }
+
   async getMonthlyRevenue(year: number) {
     // Doanh thu học phí theo tháng (đã thu được)
     const revenueRaw = await this.paymentRepository

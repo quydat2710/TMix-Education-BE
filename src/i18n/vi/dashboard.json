@@ -1,6 +1,7 @@
 {
   "SUCCESS": {
     "GET_ADMIN_DASHBOARD": "Lấy dữ liệu trang tổng quan admin thành công",
+    "GET_ALL_PAYMENTS": "Lấy danh sách thanh toán thành công",
     "GET_TEACHER_DASHBOARD": "Lấy dữ liệu trang tổng quan giáo viên thành công",
     "GET_STUDENT_DASHBOARD": "Lấy dữ liệu trang tổng quan học sinh thành công",
     "GET_PARENT_DASHBOARD": "Lấy dữ liệu trang tổng quan phụ huynh thành công"

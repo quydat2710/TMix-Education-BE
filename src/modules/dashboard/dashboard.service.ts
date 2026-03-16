@@ -24,4 +24,13 @@ export class DashboardService {
   getMonthlyRevenue(year: number) {
     return this.dashboardRepository.getMonthlyRevenue(year);
   }
+
+  getAllPaymentsForDashboard(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  }) {
+    return this.dashboardRepository.getAllPaymentsForDashboard(params);
+  }
 }

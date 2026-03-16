@@ -1,6 +1,7 @@
 {
   "SUCCESS": {
     "GET_ADMIN_DASHBOARD": "Admin dashboard data fetched successfully",
+    "GET_ALL_PAYMENTS": "All payments fetched successfully",
     "GET_TEACHER_DASHBOARD": "Teacher dashboard data fetched successfully",
     "GET_STUDENT_DASHBOARD": "Student dashboard data fetched successfully",
     "GET_PARENT_DASHBOARD": "Parent dashboard data fetched successfully"
