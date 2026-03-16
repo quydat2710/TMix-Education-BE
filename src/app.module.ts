@@ -58,6 +58,7 @@ import paymentConfig from 'config/configs/payment.config';
 import mailerConfig from 'config/configs/mailer.config';
 import otpConfig from 'config/configs/otp.config';
 import { OtpModule } from 'modules/otp/otp.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
 // import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
@@ -144,6 +145,7 @@ import { OtpModule } from 'modules/otp/otp.module';
     CronModule,
     OtpModule,
     TestsModule,
+    ChatbotModule,
     // NotificationsModule
   ],
   controllers: [AppController],

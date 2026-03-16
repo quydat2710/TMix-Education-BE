@@ -57,6 +57,37 @@ export class GroqService {
     }
 
     /**
+     * Chat completion for Chatbot (multi-turn conversation)
+     */
+    async chatCompletion(
+        messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+        retries = 2,
+    ): Promise<string> {
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const completion = await this.client.chat.completions.create({
+                    messages,
+                    model: 'llama-3.3-70b-versatile',
+                    temperature: 0.7,
+                    max_tokens: 2048,
+                });
+
+                return completion.choices[0]?.message?.content || '';
+            } catch (error: any) {
+                if (error?.status === 429 && attempt < retries) {
+                    const waitTime = 10 + attempt * 5;
+                    this.logger.warn(`Rate limited (429). Retrying in ${waitTime}s...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+                    continue;
+                }
+                this.logger.error(`Groq chat failed: ${error.message}`);
+                throw error;
+            }
+        }
+        throw new Error('Chat failed after all retries');
+    }
+
+    /**
      * Transcribe audio using Groq Whisper (for Speaking tests)
      */
     async transcribeAudio(audioFilePath: string): Promise<string> {

@@ -4,6 +4,6 @@ import { AiService } from './ai.service';
 
 @Module({
     providers: [GroqService, AiService],
-    exports: [AiService],
+    exports: [AiService, GroqService],
 })
 export class AiModule {}
