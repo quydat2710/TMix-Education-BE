@@ -524,8 +524,23 @@ export class TestsService {
         this.logger.log(`Grading speaking for test ${testId}, student ${studentId}`);
         const aiGrading = await this.aiService.gradeSpeaking(filePath, prompt, referenceText);
 
-        // Clean up temp file after grading
-        try { fs.unlinkSync(filePath); } catch (e) { /* ignore cleanup errors */ }
+        // Upload recording to Cloudinary for teacher review
+        let recordingUrl = '';
+        try {
+            const cloudinary = require('cloudinary').v2;
+            const uploadResult = await cloudinary.uploader.upload(filePath, {
+                resource_type: 'video', // 'video' handles audio files too
+                folder: 'tmix/recordings',
+                public_id: `speaking_${testId}_${studentId}_${Date.now()}`,
+            });
+            recordingUrl = uploadResult.secure_url;
+            this.logger.log(`Recording uploaded to Cloudinary: ${recordingUrl}`);
+        } catch (uploadErr) {
+            this.logger.warn(`Failed to upload recording to Cloudinary: ${uploadErr.message}`);
+        }
+
+        // Clean up temp file
+        try { fs.unlinkSync(filePath); } catch (e) { /* ignore */ }
 
         // Calculate score
         const maxPoints = test.totalPoints || 10;
@@ -537,7 +552,7 @@ export class TestsService {
             testId,
             studentId,
             answers: [],
-            recordingUrl: `/uploads/recordings/${fileName}`,
+            recordingUrl,
             transcription: aiGrading.transcription,
             aiGrading,
             score,
