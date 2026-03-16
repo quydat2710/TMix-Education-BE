@@ -21,6 +21,7 @@ export class FilesService implements OnModuleInit {
       const uploadResult = await new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream({
           folder: path,
+          resource_type: 'auto',
           filename_override: `${Date.now()}-${file.originalname}`,
           use_filename: true
         }, (error, uploadResult) => {
