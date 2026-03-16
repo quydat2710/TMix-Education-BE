@@ -1,6 +1,7 @@
 import { ParentEntity } from "./entities/parent.entity";
 import { Parent } from "./parent.domain";
 import { RoleEnum } from "modules/roles/roles.enum";
+import { StudentMapper } from "modules/students/student.mapper";
 
 export class ParentMapper {
     static toDomain(raw: ParentEntity): Parent {
@@ -21,12 +22,7 @@ export class ParentMapper {
             description: raw.role.description
         }
         if (raw.students) {
-            domainEntity.students = raw.students.map(item => ({
-                id: item.id,
-                name: item.name,
-                email: item.email,
-                phone: item.phone
-            }))
+            domainEntity.students = raw.students.map(item => StudentMapper.toDomain(item))
         }
         domainEntity.createdAt = raw.createdAt;
         domainEntity.updatedAt = raw.updatedAt;

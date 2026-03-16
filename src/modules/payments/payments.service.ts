@@ -38,4 +38,8 @@ export class PaymentsService {
     return this.paymentRepository.confirmPayment(confirmDto, apiKey)
   }
 
+  generateInvoices(month: number, year: number) {
+    return this.paymentRepository.generateInvoicesForMonth(month, year)
+  }
+
 }

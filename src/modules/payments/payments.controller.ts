@@ -72,4 +72,11 @@ export class PaymentsController {
   ) {
     return this.paymentsService.confirmPayment(confirmDto, apiKey)
   }
+
+  @Post('generate-invoices')
+  generateInvoices(
+    @Body() body: { month: number; year: number }
+  ) {
+    return this.paymentsService.generateInvoices(body.month, body.year)
+  }
 }

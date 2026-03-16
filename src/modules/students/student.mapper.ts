@@ -29,9 +29,13 @@ export class StudentMapper {
                     name: item.class.name,
                     grade: item.class.grade,
                     section: item.class.section,
+                    year: item.class.year,
                     room: item.class.room,
                     schedule: item.class.schedule,
                     status: item.class.status as 'active' | 'upcoming' | 'closed',
+                    feePerLesson: item.class.feePerLesson,
+                    max_student: item.class.max_student,
+                    description: item.class.description,
                     teacher: item.class.teacher ? {
                         id: item.class.teacher.id,
                         name: item.class.teacher.name,

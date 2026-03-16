@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PaymentEntity } from "./entities/payment.entity";
 import { Between, FindOptionsWhere, In, MoreThan, Repository } from "typeorm";
@@ -158,19 +158,24 @@ export class PaymentRepository {
             relations: { student: true, class: true }
         })
 
+        if (!paymentEntity) throw new NotFoundException('Payment not found');
+
         const content = `${paymentEntity.student.name} ${paymentEntity.class.name} ${paymentEntity.referenceCode}`
 
         if (getQrDto && (!getQrDto.amount || getQrDto.amount <= 0)) {
             throw new BadRequestException('Số tiền phải là số nguyên lớn hơn 0')
         }
 
-        const qrUrl = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${getQrDto.amount}&des=${content}&template=TEMPLATE&download=${getQrDto.download}`;
+        const encodedContent = encodeURIComponent(content);
+        const qrDataURL = `https://qr.sepay.vn/img?acc=${acc}&bank=${bank}&amount=${getQrDto.amount}&des=${encodedContent}&template=compact`;
 
-        const { data } = await firstValueFrom(
-            this.httpService.get(qrUrl))
-        return data && {
-            qrUrl,
+        return {
+            qrDataURL,
+            qrUrl: qrDataURL,
+            amount: getQrDto.amount,
+            description: content,
             studentName: paymentEntity.student.name,
+            referenceCode: paymentEntity.referenceCode,
             class: {
                 name: paymentEntity.class.name,
                 grade: paymentEntity.class.grade,
@@ -183,17 +188,52 @@ export class PaymentRepository {
 
 
     async confirmPayment(confirmDto: ConfirmDto, apiKey: string) {
-        const splitedContent = confirmDto.content.split(' ');
-
-        const referenceCode = splitedContent.at(splitedContent.length - 1);
-
         const systemApiKey = this.configService.get('payment.apiKey', { infer: true })
 
         if (apiKey !== `Apikey ${systemApiKey}`) throw new UnauthorizedException('Please authenticate')
 
-        const payment = await this.paymentsRepository.findOne({
-            where: { referenceCode }
-        })
+        let payment: PaymentEntity | null = null;
+
+        // Strategy 1: Use SePay's auto-detected code field
+        if (confirmDto.code) {
+            payment = await this.paymentsRepository.findOne({
+                where: { referenceCode: confirmDto.code }
+            });
+        }
+
+        // Strategy 2: Try last word of content (original approach)
+        if (!payment && confirmDto.content) {
+            const splitedContent = confirmDto.content.split(' ');
+            const lastWord = splitedContent.at(splitedContent.length - 1);
+            if (lastWord) {
+                payment = await this.paymentsRepository.findOne({
+                    where: { referenceCode: lastWord }
+                });
+            }
+        }
+
+        // Strategy 3: Search all pending payments and check if their referenceCode appears in the content/description
+        if (!payment) {
+            const fullText = `${confirmDto.content || ''} ${confirmDto.description || ''}`.toUpperCase();
+            const pendingPayments = await this.paymentsRepository.find({
+                where: [
+                    { status: 'pending' },
+                    { status: 'partial' }
+                ]
+            });
+
+            for (const p of pendingPayments) {
+                if (p.referenceCode && fullText.includes(p.referenceCode.toUpperCase())) {
+                    payment = p;
+                    break;
+                }
+            }
+        }
+
+        if (!payment) {
+            console.log('[Webhook] Payment not found. Content:', confirmDto.content, '| Code:', confirmDto.code);
+            return { success: false, message: 'Payment not found for reference code' }
+        }
 
         if (confirmDto && confirmDto.transferType === 'in' && confirmDto.transferAmount > 0) {
             this.handleProcessPayment(payment, {
@@ -203,7 +243,71 @@ export class PaymentRepository {
             })
 
             await this.paymentsRepository.save(payment);
+            console.log('[Webhook] Payment confirmed! ID:', payment.id, 'Amount:', confirmDto.transferAmount);
         }
         return { success: true }
+    }
+
+    /**
+     * Generate payment invoices for all active students in a given month
+     */
+    async generateInvoicesForMonth(month: number, year: number): Promise<any> {
+        // Find all classes that have students and are active
+        const existingPayments = await this.paymentsRepository.find({
+            where: { month, year }
+        });
+
+        // Get unique student-class combos that already have invoices
+        const existingCombos = new Set(
+            existingPayments.map(p => `${p.studentId}-${p.classId}`)
+        );
+
+        // Find all active class-student enrollments
+        const { EntityManager } = require('typeorm');
+        const classStudentRepo = this.paymentsRepository.manager.getRepository('student_class');
+        const enrollments = await classStudentRepo.find({
+            where: { isActive: true },
+            relations: ['class']
+        });
+
+        const newPayments: PaymentEntity[] = [];
+
+        for (const enrollment of enrollments) {
+            const combo = `${enrollment.studentId}-${enrollment.classId}`;
+            if (existingCombos.has(combo)) continue;
+
+            const classEntity = enrollment.class;
+            if (!classEntity || classEntity.status !== 'active') continue;
+
+            // Estimate lessons in month based on days_of_week
+            const daysPerWeek = classEntity.schedule?.days_of_week?.length || 0;
+            const estimatedLessons = daysPerWeek * 4;
+            const totalAmount = estimatedLessons * classEntity.feePerLesson;
+
+            if (totalAmount <= 0) continue;
+
+            const payment = this.paymentsRepository.create({
+                month,
+                year,
+                totalLessons: estimatedLessons,
+                totalAmount,
+                discountPercent: enrollment.discountPercent || 0,
+                studentId: enrollment.studentId,
+                classId: enrollment.classId
+            });
+
+            newPayments.push(payment);
+        }
+
+        if (newPayments.length > 0) {
+            await this.paymentsRepository.save(newPayments);
+        }
+
+        return {
+            generated: newPayments.length,
+            month,
+            year,
+            message: `Generated ${newPayments.length} new invoices for ${month}/${year}`
+        };
     }
 }
