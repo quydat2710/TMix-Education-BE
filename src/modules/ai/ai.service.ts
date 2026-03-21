@@ -4,19 +4,23 @@ import { WRITING_GRADING_PROMPT, SPEAKING_GRADING_PROMPT } from './prompts/gradi
 
 export interface WritingGrading {
     overallScore: number;
-    grammar: { score: number; errors: { text: string; correction: string; rule: string }[] };
+    grammar: { score: number; errors: { text: string; correction: string; rule: string; severity?: string; deduction?: number }[] };
     vocabulary: { score: number; suggestions: string[] };
     coherence: { score: number; feedback: string };
     taskAchievement: { score: number; feedback: string };
+    scoringBreakdown?: { formula: string; calculation: string; penaltiesApplied: string[] };
     detailedFeedback: string;
 }
 
 export interface SpeakingGrading {
     overallScore: number;
     transcription: string;
-    pronunciation: { score: number; feedback: string };
-    fluency: { score: number; feedback: string };
-    accuracy: { score: number; matchPercentage: number; feedback: string };
+    pronunciation: { score: number; feedback: string; mispronunciations?: { word: string; expected: string; actual: string; severity: string }[] };
+    fluency: { score: number; feedback: string; wordsPerMinute?: number; pauseCount?: number };
+    vocabulary?: { score: number; feedback: string };
+    grammar?: { score: number; feedback: string };
+    accuracy: { score: number; matchPercentage: number; feedback: string; missedWords?: string[]; addedWords?: string[] };
+    scoringBreakdown?: { formula: string; calculation: string; penaltiesApplied: string[] };
     detailedFeedback: string;
 }
 
