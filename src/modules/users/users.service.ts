@@ -220,10 +220,37 @@ export class UsersService {
 
   async resetPassword(email: string, newPassword: string) {
     const user = await this.findByEmail(email);
-    // Entity có @BeforeUpdate hook sẽ tự động hash password khi save
-    // Nên ở đây chỉ cần set plain text password
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+    const roleId = user.role?.id;
+    const repositoryMap: Record<string, Repository<any>> = {
+      [RoleEnum.admin]: this.userRepository,
+      [RoleEnum.teacher]: this.teacherRepository,
+      [RoleEnum.parent]: this.parentRepository,
+      [RoleEnum.student]: this.studentRepository,
+    };
+    const repository = repositoryMap[roleId] || this.userRepository;
     user.password = newPassword;
-    return await this.userRepository.save(user);
+    return await repository.save(user);
+  }
+
+  async resetPasswordById(userId: string, newPassword: string) {
+    const user = await this.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+    const roleId = user.role?.id;
+    const repositoryMap: Record<string, Repository<any>> = {
+      [RoleEnum.admin]: this.userRepository,
+      [RoleEnum.teacher]: this.teacherRepository,
+      [RoleEnum.parent]: this.parentRepository,
+      [RoleEnum.student]: this.studentRepository,
+    };
+    const repository = repositoryMap[roleId] || this.userRepository;
+    user.password = newPassword;
+    await repository.save(user);
+    return { message: 'Đặt lại mật khẩu thành công' };
   }
 
   async setVerifiedEmail(id: User['id'], user: UserEntity) {

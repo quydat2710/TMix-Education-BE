@@ -30,6 +30,14 @@ export class UsersController {
         return this.assignRole(assignRoleDto);
     }
 
+    @Patch('reset-password/:id')
+    resetPassword(
+        @Param('id') id: string,
+        @Body() body: { newPassword: string }
+    ) {
+        return this.usersService.resetPasswordById(id, body.newPassword);
+    }
+
     @Patch(':id')
     updateProfile(
         @Param('id') id: string,

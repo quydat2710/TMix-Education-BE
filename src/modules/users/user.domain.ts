@@ -25,6 +25,8 @@ export class User {
 
     role: Role;
 
+    isEmailVerified?: boolean;
+
     createdAt: Date;
 
     updatedAt: Date;
