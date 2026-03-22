@@ -51,7 +51,19 @@ export class AiService {
             this.logger.log(`Groq raw response length: ${response?.length || 0}`);
             const grading = this.groqService.parseJsonResponse<WritingGrading>(response);
             
-            this.logger.log(`Writing graded: overall=${grading.overallScore}/10`);
+            // Recalculate overallScore server-side (AI is bad at arithmetic)
+            const ta = grading.taskAchievement?.score || 0;
+            const co = grading.coherence?.score || 0;
+            const vo = grading.vocabulary?.score || 0;
+            const gr = grading.grammar?.score || 0;
+            grading.overallScore = Math.round((ta * 0.25 + co * 0.25 + vo * 0.25 + gr * 0.25) * 10) / 10;
+
+            // Also fix the calculation string in scoringBreakdown
+            if (grading.scoringBreakdown) {
+                grading.scoringBreakdown.calculation = `${ta} × 0.25 + ${co} × 0.25 + ${vo} × 0.25 + ${gr} × 0.25 = ${grading.overallScore}`;
+            }
+
+            this.logger.log(`Writing graded: overall=${grading.overallScore}/10 (server-calculated from TA=${ta}, CO=${co}, VO=${vo}, GR=${gr})`);
             return grading;
         } catch (error) {
             this.logger.error(`Writing grading failed: ${error.message}`);
@@ -85,8 +97,19 @@ export class AiService {
             const response = await this.groqService.generateText(fullPrompt);
             const grading = this.groqService.parseJsonResponse<SpeakingGrading>(response);
             grading.transcription = transcription;
-            
-            this.logger.log(`Speaking graded: overall=${grading.overallScore}/10`);
+
+            // Recalculate overallScore server-side (AI is bad at arithmetic)
+            const pr = grading.pronunciation?.score || 0;
+            const fl = grading.fluency?.score || 0;
+            const vo = grading.vocabulary?.score || 0;
+            const gr = grading.grammar?.score || 0;
+            grading.overallScore = Math.round((pr * 0.30 + fl * 0.30 + vo * 0.20 + gr * 0.20) * 10) / 10;
+
+            if (grading.scoringBreakdown) {
+                grading.scoringBreakdown.calculation = `${pr} × 0.30 + ${fl} × 0.30 + ${vo} × 0.20 + ${gr} × 0.20 = ${grading.overallScore}`;
+            }
+
+            this.logger.log(`Speaking graded: overall=${grading.overallScore}/10 (server-calculated from PR=${pr}, FL=${fl}, VO=${vo}, GR=${gr})`);
             return grading;
         } catch (error) {
             this.logger.error(`Speaking grading failed: ${error.message}`);

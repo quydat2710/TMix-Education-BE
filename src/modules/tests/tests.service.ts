@@ -8,6 +8,8 @@ import { UpdateTestDto } from './dto/update-test.dto';
 import { SubmitTestDto } from './dto/submit-test.dto';
 import { SubmitWritingDto } from './dto/submit-skill.dto';
 import { AiService } from '../ai/ai.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,6 +24,7 @@ export class TestsService {
         @InjectRepository(TestAttemptEntity)
         private attemptRepository: Repository<TestAttemptEntity>,
         private readonly aiService: AiService,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     // ============================================
@@ -48,7 +51,24 @@ export class TestsService {
             status: createTestDto.status || 'draft',
         });
 
-        return this.testRepository.save(test);
+        const saved = await this.testRepository.save(test);
+
+        // If created directly as published, notify students
+        if (saved.status === 'published' && saved.classId) {
+            try {
+                this.logger.log(`Test "${saved.title}" created as published, sending notifications for classId: ${saved.classId}`);
+                await this.notificationsService.sendToClass(saved.classId, {
+                    type: NotificationType.NEW_TEST,
+                    title: 'Bài test mới',
+                    message: `Giáo viên vừa tạo bài test "${saved.title}". Hãy vào làm bài nhé!`,
+                    link: '/student/tests',
+                });
+            } catch (e) {
+                this.logger.error(`Failed to send test notification on create: ${e.message}`, e.stack);
+            }
+        }
+
+        return saved;
     }
 
     /**
@@ -132,7 +152,23 @@ export class TestsService {
             throw new BadRequestException('Cannot publish a test with no questions');
         }
         test.status = 'published';
-        return this.testRepository.save(test);
+        const saved = await this.testRepository.save(test);
+
+        // Notify all students in the class
+        try {
+            this.logger.log(`Publishing test "${test.title}" for classId: ${test.classId}`);
+            const notifResult = await this.notificationsService.sendToClass(test.classId, {
+                type: NotificationType.NEW_TEST,
+                title: 'Bài test mới',
+                message: `Giáo viên vừa tạo bài test "${test.title}" cho lớp ${test.class?.name || ''}. Hãy vào làm bài nhé!`,
+                link: '/student/tests',
+            });
+            this.logger.log(`Sent ${notifResult.length} notifications for published test`);
+        } catch (e) {
+            this.logger.error(`Failed to send test notification: ${e.message}`, e.stack);
+        }
+
+        return saved;
     }
 
     /**
@@ -325,7 +361,35 @@ export class TestsService {
             gradedAt: new Date(),
         });
 
-        return this.attemptRepository.save(attempt);
+        const saved = await this.attemptRepository.save(attempt);
+
+        // Notify student of test result
+        try {
+            const test2 = await this.testRepository.findOne({ where: { id: testId }, relations: ['class'] });
+            await this.notificationsService.sendToUser(studentId, {
+                type: NotificationType.TEST_RESULT,
+                title: passed ? '🎉 Đạt bài test!' : '📝 Kết quả bài test',
+                message: `Bạn đạt ${percentage}% (${score} điểm) trong bài test "${test2?.title || ''}".`,
+                link: `/student/tests/results/${saved.id}`,
+            });
+        } catch (e) {
+            this.logger.warn(`Failed to send result notification: ${e.message}`);
+        }
+
+        // Notify parent of student's test result
+        try {
+            const test3 = await this.testRepository.findOne({ where: { id: testId } });
+            await this.notificationsService.sendToParentOfStudent(studentId, {
+                type: NotificationType.TEST_RESULT,
+                title: 'Kết quả bài test của con',
+                message: `Con bạn đạt ${percentage}% (${score} điểm) trong bài test "${test3?.title || ''}".`,
+                link: '/parent/children',
+            });
+        } catch (e) {
+            this.logger.warn(`Failed to send parent notification: ${e.message}`);
+        }
+
+        return saved;
     }
 
     /**
@@ -492,7 +556,33 @@ export class TestsService {
             gradedAt: new Date(),
         });
 
-        return this.attemptRepository.save(attempt);
+        const savedWriting = await this.attemptRepository.save(attempt);
+
+        // Notify student of writing test result
+        try {
+            await this.notificationsService.sendToUser(studentId, {
+                type: NotificationType.TEST_RESULT,
+                title: passed ? '🎉 Đạt bài Writing!' : '📝 Kết quả bài Writing',
+                message: `Bạn đạt ${percentage}% trong bài Writing "${test.title}". AI đã chấm xong.`,
+                link: `/student/tests/results/${savedWriting.id}`,
+            });
+        } catch (e) {
+            this.logger.warn(`Failed to send writing result notification: ${e.message}`);
+        }
+
+        // Notify parent of writing test result
+        try {
+            await this.notificationsService.sendToParentOfStudent(studentId, {
+                type: NotificationType.TEST_RESULT,
+                title: 'Kết quả bài Writing của con',
+                message: `Con bạn đạt ${percentage}% trong bài Writing "${test.title}".`,
+                link: '/parent/children',
+            });
+        } catch (e) {
+            this.logger.warn(`Failed to send parent writing notification: ${e.message}`);
+        }
+
+        return savedWriting;
     }
 
     /**
@@ -564,7 +654,33 @@ export class TestsService {
             gradedAt: new Date(),
         });
 
-        return this.attemptRepository.save(attempt);
+        const savedSpeaking = await this.attemptRepository.save(attempt);
+
+        // Notify student of speaking test result
+        try {
+            await this.notificationsService.sendToUser(studentId, {
+                type: NotificationType.TEST_RESULT,
+                title: passed ? '🎉 Đạt bài Speaking!' : '📝 Kết quả bài Speaking',
+                message: `Bạn đạt ${percentage}% trong bài Speaking "${test.title}". AI đã chấm xong.`,
+                link: `/student/tests/results/${savedSpeaking.id}`,
+            });
+        } catch (e) {
+            this.logger.warn(`Failed to send speaking result notification: ${e.message}`);
+        }
+
+        // Notify parent of speaking test result
+        try {
+            await this.notificationsService.sendToParentOfStudent(studentId, {
+                type: NotificationType.TEST_RESULT,
+                title: 'Kết quả bài Speaking của con',
+                message: `Con bạn đạt ${percentage}% trong bài Speaking "${test.title}".`,
+                link: '/parent/children',
+            });
+        } catch (e) {
+            this.logger.warn(`Failed to send parent speaking notification: ${e.message}`);
+        }
+
+        return savedSpeaking;
     }
 
     /**

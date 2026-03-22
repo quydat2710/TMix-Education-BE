@@ -59,7 +59,8 @@ import mailerConfig from 'config/configs/mailer.config';
 import otpConfig from 'config/configs/otp.config';
 import { OtpModule } from 'modules/otp/otp.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
-// import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     // BullModule.forRootAsync({
     //   useClass: RedisConfigService,
     // }),
+    EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     HttpModule.registerAsync({
       useFactory: () => ({
@@ -146,7 +148,7 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
     OtpModule,
     TestsModule,
     ChatbotModule,
-    // NotificationsModule
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

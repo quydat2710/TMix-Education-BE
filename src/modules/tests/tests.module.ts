@@ -6,11 +6,13 @@ import { TestEntity } from './entities/test.entity';
 import { TestAttemptEntity } from './entities/test-attempt.entity';
 import { TestAudioFileEntity } from './entities/test-audio-file.entity';
 import { AiModule } from '../ai/ai.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([TestEntity, TestAttemptEntity, TestAudioFileEntity]),
         AiModule,
+        NotificationsModule,
     ],
     controllers: [TestsController],
     providers: [TestsService],

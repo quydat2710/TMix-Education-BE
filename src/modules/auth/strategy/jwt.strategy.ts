@@ -9,7 +9,13 @@ import { User } from '@/modules/users/user.domain';
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(private readonly configService: ConfigService<AllConfigType>) {
         super({
-            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+            jwtFromRequest: ExtractJwt.fromExtractors([
+                ExtractJwt.fromAuthHeaderAsBearerToken(),
+                // Fallback: extract from query parameter (needed for SSE EventSource)
+                (request: any) => {
+                    return request?.query?.token || null;
+                },
+            ]),
             ignoreExpiration: false,
             secretOrKey: configService.get('jwt.jwt_access_secret', { infer: true })
         });

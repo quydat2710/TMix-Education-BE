@@ -156,7 +156,7 @@ Respond in VALID JSON format only (no markdown, no code blocks). Use this exact 
   },
   "vocabulary": {
     "score": <number 0-10, after applying penalties>,
-    "suggestions": ["<gợi ý cải thiện từ vựng bằng tiếng Việt, ví dụ: 'Nên dùng từ sunny thay vì good để mô tả thời tiết'>"]
+    "suggestions": ["<gợi ý cải thiện từ vựng: PHẢI gợi ý từ tiếng ANH thay thế, giải thích bằng tiếng Việt. Ví dụ: 'Nên dùng từ \'shimmered faintly\' thay vì \'shined\' để diễn tả ánh sáng lấp lánh nhẹ' hoặc 'Có thể dùng \'to my astonishment\' thay vì \'surprisingly\' để thể hiện sự ngạc nhiên mạnh hơn'. KHÔNG được gợi ý từ tiếng Việt làm thay thế — học sinh đang học tiếng Anh.>"]
   },
   "coherence": {
     "score": <number 0-10, after applying penalties>,
@@ -175,12 +175,18 @@ Respond in VALID JSON format only (no markdown, no code blocks). Use this exact 
 }
 
 CRITICAL RULES:
-1. You MUST calculate overallScore using the exact weighted formula — do NOT estimate or round to whole numbers
+1. You MUST calculate overallScore using the exact weighted formula. VERIFY YOUR ARITHMETIC:
+   - Step 1: Multiply each score by its weight (0.25)
+   - Step 2: Add all 4 products
+   - Step 3: Round to 1 decimal place
+   - Example: 9.0×0.25=2.25, 9.0×0.25=2.25, 9.5×0.25=2.375, 9.0×0.25=2.25 → 2.25+2.25+2.375+2.25=9.125 → overallScore=9.1
+   - DO NOT estimate or guess the final score — calculate it properly!
 2. You MUST classify every grammar error with severity (minor/moderate/major) and show the deduction
 3. Start each criterion at 10.0 and apply deductions based on the penalty rules
 4. The penaltiesApplied array must show ALL penalties applied for transparency
-5. Write ALL feedback fields in Vietnamese (detailedFeedback, coherence.feedback, taskAchievement.feedback, vocabulary.suggestions, scoringBreakdown.penaltiesApplied). Only keep grammar error "text", "correction", and "rule" in English since they reference English content.
-6. If essay is empty or gibberish, return all scores as 0`;
+5. VOCABULARY SUGGESTIONS: You MUST suggest ENGLISH words/phrases as alternatives (e.g., 'shimmered faintly', 'to my astonishment'). Explain WHY in Vietnamese. NEVER suggest Vietnamese words as vocabulary alternatives — students are learning English.
+6. Write feedback fields in Vietnamese (detailedFeedback, coherence.feedback, taskAchievement.feedback, scoringBreakdown.penaltiesApplied). Only keep grammar error "text", "correction", and "rule" in English since they reference English content.
+7. If essay is empty or gibberish, return all scores as 0`;
 
 
 export const SPEAKING_GRADING_PROMPT = `You are an expert English pronunciation and speaking evaluator. Grade the student's speaking performance using the STANDARDIZED RUBRIC below.
