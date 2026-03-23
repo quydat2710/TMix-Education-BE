@@ -231,9 +231,12 @@ export class PaymentRepository {
             }
         }
 
-        // Strategy 4: Match by student name + class name in content (banks often reformat QR content)
+        // Strategy 4: Match by student name + class name in content (banks strip diacritics + dots)
         if (!payment) {
-            const fullText = `${confirmDto.content || ''} ${confirmDto.description || ''}`.toUpperCase();
+            const removeDiacritics = (str: string) =>
+                str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+
+            const fullText = removeDiacritics(`${confirmDto.content || ''} ${confirmDto.description || ''}`).toUpperCase();
             const pendingPayments = await this.paymentsRepository.find({
                 where: [
                     { status: 'pending' },
@@ -243,9 +246,9 @@ export class PaymentRepository {
             });
 
             for (const p of pendingPayments) {
-                const studentName = p.student?.name?.toUpperCase() || '';
-                const className = p.class?.name?.toUpperCase() || '';
-                // Banks often strip dots/special chars: "6.2" → "62"
+                const studentName = removeDiacritics(p.student?.name || '').toUpperCase();
+                const className = removeDiacritics(p.class?.name || '').toUpperCase();
+                // Banks strip dots: "6.2" → "62"
                 const classNameNoDots = className.replace(/\./g, '');
                 
                 if (studentName && className) {
