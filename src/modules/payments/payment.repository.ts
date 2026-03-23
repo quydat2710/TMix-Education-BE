@@ -160,7 +160,8 @@ export class PaymentRepository {
 
         if (!paymentEntity) throw new NotFoundException('Payment not found');
 
-        const content = `${paymentEntity.student.name} ${paymentEntity.class.name} ${paymentEntity.referenceCode}`
+        const refPart = paymentEntity.referenceCode ? ` ${paymentEntity.referenceCode}` : '';
+        const content = `${paymentEntity.student.name} ${paymentEntity.class.name}${refPart}`
 
         if (getQrDto && (!getQrDto.amount || getQrDto.amount <= 0)) {
             throw new BadRequestException('Số tiền phải là số nguyên lớn hơn 0')
@@ -244,11 +245,17 @@ export class PaymentRepository {
             for (const p of pendingPayments) {
                 const studentName = p.student?.name?.toUpperCase() || '';
                 const className = p.class?.name?.toUpperCase() || '';
-                // Check if both student name and class name appear in the transfer content
-                if (studentName && className && fullText.includes(studentName) && fullText.includes(className)) {
-                    payment = p;
-                    console.log('[Webhook] Strategy 4 matched by student+class name:', studentName, className);
-                    break;
+                // Banks often strip dots/special chars: "6.2" → "62"
+                const classNameNoDots = className.replace(/\./g, '');
+                
+                if (studentName && className) {
+                    const nameMatch = fullText.includes(studentName);
+                    const classMatch = fullText.includes(className) || fullText.includes(classNameNoDots);
+                    if (nameMatch && classMatch) {
+                        payment = p;
+                        console.log('[Webhook] Strategy 4 matched by student+class name:', studentName, className);
+                        break;
+                    }
                 }
             }
         }
