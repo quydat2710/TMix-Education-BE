@@ -39,9 +39,10 @@ export class SessionRepository {
 
   async create(id: Class['id']) {
     const classEntity = await this.classesService.findOne(id);
-    const studentIds = classEntity.students.map((item) =>
-      item.student.id.toString(),
-    );
+    // Only include active students in attendance
+    const studentIds = classEntity.students
+      .filter((item) => item.isActive !== false)
+      .map((item) => item.student.id.toString());
 
     const sessionEntity = this.sessionRepository.create({
       date: dayjs().toDate(),

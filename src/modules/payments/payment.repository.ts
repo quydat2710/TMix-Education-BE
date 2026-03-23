@@ -311,6 +311,8 @@ export class PaymentRepository {
 
             const classEntity = enrollment.class;
             if (!classEntity || classEntity.status !== 'active') continue;
+            // Skip inactive (paused) students
+            if (enrollment.isActive === false) continue;
 
             // Estimate lessons in month based on days_of_week
             const daysPerWeek = classEntity.schedule?.days_of_week?.length || 0;

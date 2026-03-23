@@ -242,22 +242,40 @@ export class DashboardRepository {
         className: classStudent.class?.name || 'Unknown',
         room: classStudent.class?.room || 'N/A',
         schedule: classStudent.class?.schedule || {},
-        teacherName: classStudent.class?.teacher?.name || 'Unknown',
+        teacherName: classStudent.class?.teacher?.name || 'Chưa phân công',
         status: classStudent.class?.status || 'unknown',
       })) || [];
 
-    // TODO: Implement attendance calculation if needed
-    const attendance = {
-      totalSessions: 0,
-      attendedSessions: 0,
-      attendanceRate: 0,
-    };
+    // Calculate real attendance from attendance_sessions table
+    const attendanceStats = await this.studentRepository.manager
+      .createQueryBuilder()
+      .select('COUNT(*)', 'totalSessions')
+      .addSelect(`SUM(CASE WHEN "status" = 'present' THEN 1 ELSE 0 END)`, 'presentSessions')
+      .addSelect(`SUM(CASE WHEN "status" = 'absent' THEN 1 ELSE 0 END)`, 'absentSessions')
+      .addSelect(`SUM(CASE WHEN "status" = 'late' THEN 1 ELSE 0 END)`, 'lateSessions')
+      .from('attendance_session', 'att')
+      .where('"studentId" = :studentId', { studentId })
+      .getRawOne();
+
+    const totalSessions = parseInt(attendanceStats?.totalSessions) || 0;
+    const presentSessions = parseInt(attendanceStats?.presentSessions) || 0;
+    const absentSessions = parseInt(attendanceStats?.absentSessions) || 0;
+    const lateSessions = parseInt(attendanceStats?.lateSessions) || 0;
+    const attendanceRate = totalSessions > 0
+      ? Math.round(((presentSessions + lateSessions) / totalSessions) * 100)
+      : 0;
 
     return {
       totalClasses: student.classes?.length || 0,
       activeClasses,
       completedClasses,
-      attendance,
+      attendance: {
+        totalSessions,
+        presentSessions,
+        absentSessions,
+        lateSessions,
+        attendanceRate,
+      },
       classList,
     };
   }
