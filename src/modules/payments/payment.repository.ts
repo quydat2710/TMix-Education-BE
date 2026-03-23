@@ -230,8 +230,31 @@ export class PaymentRepository {
             }
         }
 
+        // Strategy 4: Match by student name + class name in content (banks often reformat QR content)
         if (!payment) {
-            console.log('[Webhook] Payment not found. Content:', confirmDto.content, '| Code:', confirmDto.code);
+            const fullText = `${confirmDto.content || ''} ${confirmDto.description || ''}`.toUpperCase();
+            const pendingPayments = await this.paymentsRepository.find({
+                where: [
+                    { status: 'pending' },
+                    { status: 'partial' }
+                ],
+                relations: ['student', 'class']
+            });
+
+            for (const p of pendingPayments) {
+                const studentName = p.student?.name?.toUpperCase() || '';
+                const className = p.class?.name?.toUpperCase() || '';
+                // Check if both student name and class name appear in the transfer content
+                if (studentName && className && fullText.includes(studentName) && fullText.includes(className)) {
+                    payment = p;
+                    console.log('[Webhook] Strategy 4 matched by student+class name:', studentName, className);
+                    break;
+                }
+            }
+        }
+
+        if (!payment) {
+            console.log('[Webhook] Payment not found. Content:', confirmDto.content, '| Code:', confirmDto.code, '| Description:', confirmDto.description);
             return { success: false, message: 'Payment not found for reference code' }
         }
 
