@@ -376,7 +376,7 @@ export class TestsService {
             this.logger.warn(`Failed to send result notification: ${e.message}`);
         }
 
-        // Notify parent of student's test result
+        // Notify parent of student's test result (with child name)
         try {
             const test3 = await this.testRepository.findOne({ where: { id: testId } });
             await this.notificationsService.sendToParentOfStudent(studentId, {

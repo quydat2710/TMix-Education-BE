@@ -132,6 +132,7 @@ export class NotificationsService {
 
   /**
    * Send notification to the parent of a student
+   * Automatically includes the child's name in the notification
    */
   async sendToParentOfStudent(
     studentId: string,
@@ -144,9 +145,12 @@ export class NotificationsService {
       });
 
       if (student?.parent) {
-        this.logger.log(`Sending parent notification to ${student.parent.id} for student ${studentId}`);
+        const childName = student.name || 'con bạn';
+        this.logger.log(`Sending parent notification to ${student.parent.id} for student ${childName} (${studentId})`);
         return this.create({
           ...data,
+          title: data.title.includes(childName) ? data.title : `[${childName}] ${data.title}`,
+          message: data.message.replace(/con bạn/gi, childName),
           recipientId: student.parent.id,
         });
       } else {
@@ -286,21 +290,14 @@ export class NotificationsService {
     token: string,
     platform: string = 'android',
   ): Promise<void> {
-    // Check if token already exists for this user
-    const existing = await this.deviceTokenRepo.findOne({
-      where: { userId, token },
-    });
+    // Delete any existing record with this token (handles account switching on same device)
+    await this.deviceTokenRepo.delete({ token });
 
-    if (!existing) {
-      // Delete old tokens for this user+platform (keep only latest)
-      await this.deviceTokenRepo.delete({ userId, platform });
-
-      // Save new token
-      await this.deviceTokenRepo.save(
-        this.deviceTokenRepo.create({ userId, token, platform }),
-      );
-      this.logger.log(`Device token registered for user ${userId} (${platform})`);
-    }
+    // Save new token for this user
+    await this.deviceTokenRepo.save(
+      this.deviceTokenRepo.create({ userId, token, platform }),
+    );
+    this.logger.log(`Device token registered for user ${userId} (${platform})`);
   }
 
   /**
