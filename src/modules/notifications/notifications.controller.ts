@@ -116,4 +116,20 @@ export class NotificationsController {
     const success = await this.notificationsService.remove(id, user.id);
     return { success };
   }
+
+  /**
+   * Register a device token for FCM push notifications
+   */
+  @Post('register-device')
+  async registerDevice(
+    @UserInfo() user: any,
+    @Body() body: { token: string; platform: string },
+  ) {
+    await this.notificationsService.registerDeviceToken(
+      user.id,
+      body.token,
+      body.platform || 'android',
+    );
+    return { message: 'Device token registered' };
+  }
 }

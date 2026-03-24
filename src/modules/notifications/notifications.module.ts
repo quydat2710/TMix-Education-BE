@@ -6,6 +6,7 @@ import { NotificationEntity } from './entities/notification.entity';
 import { UserEntity } from '@/modules/users/entities/user.entity';
 import { ClassStudentEntity } from '@/modules/classes/entities/class-student.entity';
 import { StudentEntity } from '@/modules/students/entities/student.entity';
+import { DeviceTokenEntity } from './entities/device-token.entity';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { StudentEntity } from '@/modules/students/entities/student.entity';
       UserEntity,
       ClassStudentEntity,
       StudentEntity,
+      DeviceTokenEntity,
     ]),
   ],
   controllers: [NotificationsController],

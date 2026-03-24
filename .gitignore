@@ -46,3 +46,6 @@ reset-admin-password.ts
 reset-admin-password.ts
 fix-password.ts
 columns.txt
+
+# Firebase service account key
+*firebase-adminsdk*

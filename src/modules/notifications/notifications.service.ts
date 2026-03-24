@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationEntity, NotificationType } from './entities/notification.entity';
+import { DeviceTokenEntity } from './entities/device-token.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { IPaginationOptions } from '@/utils/types/pagination-options';
 import { UserEntity } from '@/modules/users/entities/user.entity';
 import { ClassStudentEntity } from '@/modules/classes/entities/class-student.entity';
 import { StudentEntity } from '@/modules/students/entities/student.entity';
+import { admin, firebaseApp } from '@/config/firebase.config';
 
 @Injectable()
 export class NotificationsService {
@@ -23,6 +25,8 @@ export class NotificationsService {
     private classStudentRepo: Repository<ClassStudentEntity>,
     @InjectRepository(StudentEntity)
     private studentRepo: Repository<StudentEntity>,
+    @InjectRepository(DeviceTokenEntity)
+    private deviceTokenRepo: Repository<DeviceTokenEntity>,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -40,8 +44,12 @@ export class NotificationsService {
 
     const saved = await this.notificationRepo.save(notification);
 
-    // Emit SSE event for realtime delivery
+    // Emit SSE event for realtime in-app delivery
     this.eventEmitter.emit(`notification.${dto.recipientId}`, saved);
+
+    // Send FCM push notification
+    await this.sendFCMPush(dto.recipientId, dto.title, dto.message, saved.id);
+
     this.logger.log(`Notification sent to user ${dto.recipientId}: ${dto.title}`);
 
     return saved;
@@ -268,5 +276,91 @@ export class NotificationsService {
       recipientId: userId,
     });
     return result.affected > 0;
+  }
+
+  /**
+   * Register a device token for FCM push notifications
+   */
+  async registerDeviceToken(
+    userId: string,
+    token: string,
+    platform: string = 'android',
+  ): Promise<void> {
+    // Check if token already exists for this user
+    const existing = await this.deviceTokenRepo.findOne({
+      where: { userId, token },
+    });
+
+    if (!existing) {
+      // Delete old tokens for this user+platform (keep only latest)
+      await this.deviceTokenRepo.delete({ userId, platform });
+
+      // Save new token
+      await this.deviceTokenRepo.save(
+        this.deviceTokenRepo.create({ userId, token, platform }),
+      );
+      this.logger.log(`Device token registered for user ${userId} (${platform})`);
+    }
+  }
+
+  /**
+   * Send FCM push notification to all devices of a user
+   */
+  private async sendFCMPush(
+    userId: string,
+    title: string,
+    message: string,
+    notificationId?: string,
+  ): Promise<void> {
+    if (!firebaseApp) {
+      this.logger.warn('Firebase not initialized, skipping FCM push');
+      return;
+    }
+
+    try {
+      const deviceTokens = await this.deviceTokenRepo.find({
+        where: { userId },
+      });
+
+      if (deviceTokens.length === 0) {
+        this.logger.log(`No device tokens for user ${userId}, skipping FCM`);
+        return;
+      }
+
+      const tokens = deviceTokens.map((dt) => dt.token);
+
+      // Send to all devices
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens,
+        data: {
+          title,
+          message,
+          notificationId: notificationId || '',
+        },
+        android: {
+          priority: 'high',
+        },
+      });
+
+      this.logger.log(
+        `FCM push sent to ${response.successCount}/${tokens.length} devices for user ${userId}`,
+      );
+
+      // Clean up invalid tokens
+      if (response.failureCount > 0) {
+        const invalidTokens: string[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
+            invalidTokens.push(tokens[idx]);
+          }
+        });
+        if (invalidTokens.length > 0) {
+          await this.deviceTokenRepo.delete({ token: In(invalidTokens) });
+          this.logger.log(`Cleaned up ${invalidTokens.length} invalid FCM tokens`);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`FCM push failed for user ${userId}: ${error.message}`);
+    }
   }
 }
