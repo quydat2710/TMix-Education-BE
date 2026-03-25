@@ -17,11 +17,18 @@ export class FilesService implements OnModuleInit {
 
   async uploadFile(file: Express.Multer.File, path: string = '') {
     try {
-      // Upload the image
+      // Determine correct resource_type based on MIME type
+      let resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto';
+      if (file.mimetype.startsWith('image/')) {
+        resourceType = 'image';
+      } else if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
+        resourceType = 'video';
+      }
+
       const uploadResult = await new Promise((resolve, reject) => {
         cloudinary.uploader.upload_stream({
           folder: path,
-          resource_type: 'auto',
+          resource_type: resourceType,
           filename_override: `${Date.now()}-${file.originalname}`,
           use_filename: true
         }, (error, uploadResult) => {

@@ -61,6 +61,7 @@ import { OtpModule } from 'modules/otp/otp.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { MaterialsModule } from './modules/materials/materials.module';
 
 @Module({
   imports: [
@@ -149,6 +150,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     TestsModule,
     ChatbotModule,
     NotificationsModule,
+    MaterialsModule,
   ],
   controllers: [AppController],
   providers: [

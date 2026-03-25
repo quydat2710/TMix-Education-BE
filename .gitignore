@@ -49,3 +49,6 @@ columns.txt
 
 # Firebase service account key
 *firebase-adminsdk*
+
+# Uploaded materials (stored on server only)
+/uploads
