@@ -17,7 +17,7 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
             database: this.configService.get('database.dbName', { infer: true }),
             entities: [__dirname + '/../**/*.entity{.js,.ts}'],
             subscribers: [AuditSubscriber],
-            synchronize: this.configService.get('app.nodeEnv', { infer: true }) !== 'production',
+            synchronize: true, // TEMP: force sync to create materials table, revert after deploy
             ssl: this.configService.get('app.nodeEnv', { infer: true }) === 'production'
                 ? { rejectUnauthorized: false }
                 : false,
