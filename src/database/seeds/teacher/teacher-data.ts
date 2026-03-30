@@ -1,6 +1,6 @@
 export const data = [
     {
-        name: "Nguyễn Thị Hoa",
+        name: "Lò Phương Điệp",
         email: "teacher01@tmix.edu.vn",
         password: "password123",
         role: "teacher",
@@ -9,10 +9,10 @@ export const data = [
         address: "45 Trần Phú, Quận Ba Đình, Hà Nội",
         gender: "female",
         isActive: true,
-        salaryPerLesson: 200000,
-        qualifications: ["Bachelor of Education", "TESOL Certificate"],
-        specialization: ["IELTS", "General English"],
-        description: "Giáo viên dày dặn kinh nghiệm với hơn 10 năm giảng dạy tiếng Anh. Chuyên luyện thi IELTS và phát triển kỹ năng giao tiếp cho học sinh cấp 2, cấp 3."
+        salaryPerLesson: 300000,
+        qualifications: ["Master of Education", "CELTA", "IELTS 8.5"],
+        specialization: ["IELTS", "General English", "Speaking"],
+        description: "Giáo viên cao cấp với hơn 12 năm kinh nghiệm giảng dạy tiếng Anh. Chuyên luyện thi IELTS và phát triển kỹ năng giao tiếp toàn diện cho học sinh từ cơ bản đến nâng cao."
     },
     {
         name: "Hoàng Văn Phúc",

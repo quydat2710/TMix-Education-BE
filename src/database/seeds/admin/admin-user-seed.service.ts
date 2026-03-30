@@ -5,6 +5,27 @@ import { UserEntity } from '@/modules/users/entities/user.entity';
 import { RoleEntity } from '@/modules/roles/entities/role.entity';
 import { RoleEnum } from '@/modules/roles/roles.enum';
 
+const adminUsers = [
+    {
+        name: 'System Administrator',
+        email: 'admin@gmail.com',
+        password: 'password123',
+        gender: 'Male',
+        dayOfBirth: '1990-01-01',
+        address: '123 Nguyễn Huệ, Quận 1, TP.HCM',
+        phone: '0901000001',
+    },
+    {
+        name: 'Quý Đạt',
+        email: 'quydat2710@gmail.com',
+        password: 'Dat27102003',
+        gender: 'Male',
+        dayOfBirth: '2003-10-27',
+        address: 'TP. Hồ Chí Minh',
+        phone: '0346857241',
+    },
+];
+
 @Injectable()
 export class AdminUserSeedService {
     constructor(
@@ -23,29 +44,28 @@ export class AdminUserSeedService {
             throw new Error('Admin role not found. Please ensure roles are seeded first.');
         }
 
-        const existingAdmin = await this.userRepository.findOne({
-            where: { email: 'admin@gmail.com' }
-        });
-
-        if (!existingAdmin) {
-
-            const admin = this.userRepository.create({
-                name: 'System Administrator',
-                email: 'admin@gmail.com',
-                password: 'password123',
-                gender: 'Male',
-                dayOfBirth: new Date('1990-01-01'),
-                address: 'System Address',
-                phone: '1234567890',
-                role: adminRole,
+        for (const adminData of adminUsers) {
+            const existing = await this.userRepository.findOne({
+                where: { email: adminData.email }
             });
 
-            await this.userRepository.save(admin);
-            console.log('Default admin user created successfully');
-            console.log('Email: admin@gmail.com');
-            console.log('Password: password123');
-        } else {
-            console.log('Admin user already exists');
+            if (!existing) {
+                const admin = this.userRepository.create({
+                    name: adminData.name,
+                    email: adminData.email,
+                    password: adminData.password,
+                    gender: adminData.gender,
+                    dayOfBirth: new Date(adminData.dayOfBirth),
+                    address: adminData.address,
+                    phone: adminData.phone,
+                    role: adminRole,
+                });
+
+                await this.userRepository.save(admin);
+                console.log(`Admin user created: ${adminData.email}`);
+            } else {
+                console.log(`Admin user already exists: ${adminData.email}`);
+            }
         }
     }
 }

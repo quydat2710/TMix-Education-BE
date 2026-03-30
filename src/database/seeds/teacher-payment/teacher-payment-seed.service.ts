@@ -24,8 +24,6 @@ export class TeacherPaymentSeedService {
             relations: ['teacher'],
         });
 
-        const paymentMethods = ['cash', 'bank_transfer'];
-
         // Nhóm classes theo teacher
         const teacherClassesMap = new Map<string, ClassEntity[]>();
         for (const aclass of classes) {
@@ -37,9 +35,13 @@ export class TeacherPaymentSeedService {
             teacherClassesMap.get(teacherId)!.push(aclass);
         }
 
+        // Deterministic payment methods - xoay vòng thay vì random
+        const paymentMethods = ['cash', 'bank_transfer'];
+        let methodIndex = 0;
+
         for (const [teacherId, teacherClasses] of teacherClassesMap) {
             const teacher = teacherClasses[0].teacher;
-            const salaryPerLesson = teacher.salaryPerLesson || 180000;
+            const salaryPerLesson = teacher.salaryPerLesson || 200000;
 
             // Tìm tất cả tháng cần tạo payment
             const monthlyClassesMap = new Map<string, { classId: string; className: string; totalLessons: number }[]>();
@@ -49,7 +51,7 @@ export class TeacherPaymentSeedService {
                 if (!schedule) continue;
 
                 const startDate = new Date(schedule.start_date);
-                const endDate = aclass.status === 'active' ? new Date('2026-03-10') : new Date(schedule.end_date);
+                const endDate = aclass.status === 'active' ? new Date('2026-03-30') : new Date(schedule.end_date);
 
                 // Sessions trong lớp này
                 const totalSessions = await this.sessionRepository.count({
@@ -88,8 +90,8 @@ export class TeacherPaymentSeedService {
                 const totalLessons = classesData.reduce((sum, c) => sum + c.totalLessons, 0);
                 const totalAmount = totalLessons * salaryPerLesson;
 
-                // Xác định trạng thái thanh toán
-                const today = new Date('2026-03-10');
+                // Xác định trạng thái thanh toán (deterministic - dựa trên tháng)
+                const today = new Date('2026-03-30');
                 const paymentMonth = new Date(year, month - 1, 1);
                 const monthsDiff = (today.getFullYear() - paymentMonth.getFullYear()) * 12 +
                     (today.getMonth() - paymentMonth.getMonth());
@@ -99,37 +101,26 @@ export class TeacherPaymentSeedService {
                 const histories: any[] = [];
 
                 if (monthsDiff >= 2) {
-                    // Tháng cũ: đã trả đủ
+                    // Tháng cũ (>= 2 tháng trước): đã trả đủ
                     status = 'paid';
                     paidAmount = totalAmount;
                     histories.push({
-                        method: paymentMethods[Math.floor(Math.random() * 2)],
+                        method: paymentMethods[methodIndex % 2],
                         amount: totalAmount,
                         note: 'Thanh toán lương đầy đủ',
-                        date: new Date(year, month, Math.floor(Math.random() * 10) + 1),
+                        date: new Date(year, month, 5), // Ngày 5 tháng sau
                     });
+                    methodIndex++;
                 } else if (monthsDiff === 1) {
-                    // Tháng trước: 80% đã trả
-                    const rand = Math.random();
-                    if (rand < 0.8) {
-                        status = 'paid';
-                        paidAmount = totalAmount;
-                        histories.push({
-                            method: paymentMethods[Math.floor(Math.random() * 2)],
-                            amount: totalAmount,
-                            note: 'Thanh toán lương đầy đủ',
-                            date: new Date(year, month, Math.floor(Math.random() * 10) + 1),
-                        });
-                    } else {
-                        status = 'partial';
-                        paidAmount = Math.round(totalAmount * 0.6);
-                        histories.push({
-                            method: 'cash',
-                            amount: paidAmount,
-                            note: 'Tạm ứng lương',
-                            date: new Date(year, month, Math.floor(Math.random() * 5) + 1),
-                        });
-                    }
+                    // Tháng trước: 70% đã trả (partial)
+                    status = 'partial';
+                    paidAmount = Math.round(totalAmount * 0.7);
+                    histories.push({
+                        method: 'bank_transfer',
+                        amount: paidAmount,
+                        note: 'Tạm ứng lương tháng trước',
+                        date: new Date(year, month, 3), // Ngày 3 tháng sau
+                    });
                 } else {
                     // Tháng hiện tại: chờ thanh toán
                     status = 'pending';
