@@ -21,7 +21,7 @@ const adminUsers = [
         password: 'password123',
         gender: 'Male',
         dayOfBirth: '2003-10-27',
-        address: 'TP. Hồ Chí Minh',
+        address: 'Hà Nội',
         phone: '0346857241',
     },
 ];

@@ -44,7 +44,7 @@ export class TeacherPaymentSeedService {
             const salaryPerLesson = teacher.salaryPerLesson || 200000;
 
             // Tìm tất cả tháng cần tạo payment
-            const monthlyClassesMap = new Map<string, { classId: string; className: string; totalLessons: number }[]>();
+            const monthlyClassesMap = new Map<string, any[]>();
 
             for (const aclass of teacherClasses) {
                 const schedule = aclass.schedule;
@@ -76,6 +76,10 @@ export class TeacherPaymentSeedService {
                     monthlyClassesMap.get(key)!.push({
                         classId: aclass.id,
                         className: aclass.name,
+                        grade: aclass.grade,
+                        year: aclass.year,
+                        section: aclass.section,
+                        feePerLesson: aclass.feePerLesson,
                         totalLessons: lessonsPerMonth,
                     });
                 }
@@ -137,6 +141,14 @@ export class TeacherPaymentSeedService {
                         teacherId,
                         classes: classesData.map(c => ({
                             classId: c.classId,
+                            class: {
+                                id: c.classId,
+                                name: c.className,
+                                grade: c.grade,
+                                year: c.year,
+                                section: c.section,
+                                feePerLesson: c.feePerLesson,
+                            },
                             totalLessons: c.totalLessons,
                         })) as any,
                         histories,
