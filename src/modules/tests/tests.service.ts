@@ -257,6 +257,7 @@ export class TestsService {
                     id: test.id,
                     title: test.title,
                     description: test.description,
+                    skillType: test.skillType || 'reading',
                     className: test.class?.name || '',
                     teacherName: test.teacher?.name || '',
                     duration: test.duration,
