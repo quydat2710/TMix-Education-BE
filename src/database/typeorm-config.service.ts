@@ -17,7 +17,7 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
             database: this.configService.get('database.dbName', { infer: true }),
             entities: [__dirname + '/../**/*.entity{.js,.ts}'],
             subscribers: [AuditSubscriber],
-            synchronize: true, // TEMPORARY: revert after production DB sync
+            synchronize: this.configService.get('app.nodeEnv', { infer: true }) !== 'production',
             ssl: this.configService.get('app.nodeEnv', { infer: true }) === 'production'
                 ? { rejectUnauthorized: false }
                 : false,
