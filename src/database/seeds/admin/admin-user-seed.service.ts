@@ -18,7 +18,7 @@ const adminUsers = [
     {
         name: 'Quý Đạt',
         email: 'quydat2710@gmail.com',
-        password: 'Dat27102003',
+        password: 'password123',
         gender: 'Male',
         dayOfBirth: '2003-10-27',
         address: 'TP. Hồ Chí Minh',
