@@ -28,7 +28,7 @@ export class NotificationEntity {
   })
   type: NotificationType;
 
-  @Column()
+  @Column({ default: 'Thông báo' })
   title: string;
 
   @Column('text')
