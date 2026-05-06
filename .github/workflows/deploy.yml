@@ -42,6 +42,7 @@ jobs:
           SCRIPT_AFTER: |
             cd /home/ubuntu/TMix-Education-BE
             npm install --production --legacy-peer-deps
-            pm2 restart tmix-backend
+            pm2 delete tmix-backend || true
+            pm2 start dist/main.js --name tmix-backend --cwd /home/ubuntu/TMix-Education-BE
             pm2 save
             echo "✅ Backend deployed successfully!"
