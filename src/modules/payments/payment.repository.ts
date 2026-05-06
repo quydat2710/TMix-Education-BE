@@ -80,8 +80,9 @@ export class PaymentRepository {
         if (entity.totalLessons === 0) throw new BadRequestException('No lessons');
         if (entity.status === 'paid') throw new BadRequestException('Fully paid');
         
-        // Cap the payment amount to the remaining balance (don't throw on overpayment)
-        const remaining = entity.totalAmount - entity.paidAmount;
+        // Net amount after discount is what the student actually owes
+        const netTotal = entity.totalAmount - (entity.discountPercent * entity.totalAmount / 100);
+        const remaining = netTotal - entity.paidAmount;
         const actualAmount = Math.min(+payStudentDto.amount, remaining);
         
         if (actualAmount <= 0) throw new BadRequestException('Payment already completed');
@@ -94,7 +95,6 @@ export class PaymentRepository {
                 date: new Date()
             })
         }
-        // Override the amount with the clamped value so the caller has the actual credited amount
         payStudentDto.amount = actualAmount;
     }
 
@@ -191,6 +191,8 @@ export class PaymentRepository {
                 }
             });
 
+            const candidatesByName: PaymentEntity[] = [];
+
             for (const p of pendingPayments) {
                 // Strategy 3: Check referenceCode in content
                 if (p.referenceCode && fullTextUpper.includes(p.referenceCode.toUpperCase())) {
@@ -198,7 +200,7 @@ export class PaymentRepository {
                     break;
                 }
 
-                // Strategy 4: Match by student name + class name (banks strip diacritics + dots)
+                // Strategy 4: Collect all candidates matching student name + class name
                 const studentName = removeDiacritics(p.student?.name || '').toUpperCase();
                 const className = removeDiacritics(p.class?.name || '').toUpperCase();
                 const classNameNoDots = className.replace(/\./g, '');
@@ -207,10 +209,20 @@ export class PaymentRepository {
                     const nameMatch = fullTextNormalized.includes(studentName);
                     const classMatch = fullTextNormalized.includes(className) || fullTextNormalized.includes(classNameNoDots);
                     if (nameMatch && classMatch) {
-                        payment = p;
-                        break;
+                        candidatesByName.push(p);
                     }
                 }
+            }
+
+            // Strategy 4: Among candidates, pick the one whose net amount best matches transferAmount
+            if (!payment && candidatesByName.length > 0) {
+                const transferAmount = confirmDto.transferAmount || 0;
+                candidatesByName.sort((a, b) => {
+                    const netA = a.totalAmount - (a.discountPercent * a.totalAmount / 100) - a.paidAmount;
+                    const netB = b.totalAmount - (b.discountPercent * b.totalAmount / 100) - b.paidAmount;
+                    return Math.abs(netA - transferAmount) - Math.abs(netB - transferAmount);
+                });
+                payment = candidatesByName[0];
             }
         }
 
