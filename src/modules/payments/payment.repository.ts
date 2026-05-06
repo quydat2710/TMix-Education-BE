@@ -79,15 +79,23 @@ export class PaymentRepository {
     handleProcessPayment(entity: PaymentEntity, payStudentDto: PayStudentDto) {
         if (entity.totalLessons === 0) throw new BadRequestException('No lessons');
         if (entity.status === 'paid') throw new BadRequestException('Fully paid');
-        if (entity.paidAmount + +payStudentDto.amount > entity.totalAmount) throw new BadRequestException('Exceeds remaning balance')
+        
+        // Cap the payment amount to the remaining balance (don't throw on overpayment)
+        const remaining = entity.totalAmount - entity.paidAmount;
+        const actualAmount = Math.min(+payStudentDto.amount, remaining);
+        
+        if (actualAmount <= 0) throw new BadRequestException('Payment already completed');
+        
         if (Array.isArray(entity.histories)) {
             entity.histories.push({
-                amount: payStudentDto.amount,
+                amount: actualAmount,
                 method: payStudentDto.method,
                 note: payStudentDto.note,
                 date: new Date()
             })
         }
+        // Override the amount with the clamped value so the caller has the actual credited amount
+        payStudentDto.amount = actualAmount;
     }
 
     async payStudent(paymentId: Payment['id'], payStudentDto: PayStudentDto) {
