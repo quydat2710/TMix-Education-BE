@@ -36,11 +36,12 @@ jobs:
           REMOTE_HOST: ${{ secrets.EC2_HOST }}
           REMOTE_USER: ${{ secrets.EC2_USER }}
           SOURCE: "dist/ package.json package-lock.json"
-          TARGET: /home/ubuntu/TMix-Center-BE/
+          TARGET: /home/ubuntu/TMix-Education-BE/
           SCRIPT_BEFORE: |
             echo "🔄 Starting deployment..."
           SCRIPT_AFTER: |
-            cd /home/ubuntu/TMix-Center-BE
+            cd /home/ubuntu/TMix-Education-BE
             npm install --production --legacy-peer-deps
             pm2 restart tmix-backend
+            pm2 save
             echo "✅ Backend deployed successfully!"
