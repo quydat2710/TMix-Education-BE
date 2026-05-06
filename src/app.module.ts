@@ -62,6 +62,10 @@ import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MaterialsModule } from './modules/materials/materials.module';
+import { TtsModule } from './modules/tts/tts.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -113,6 +117,15 @@ import { MaterialsModule } from './modules/materials/materials.module';
     //   useClass: RedisConfigService,
     // }),
     EventEmitterModule.forRoot(),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
+    ThrottlerModule.forRoot([{
+      name: 'default',
+      ttl: 60000,  // 1 minute window
+      limit: 60,   // 60 requests per minute (global)
+    }]),
     ScheduleModule.forRoot(),
     HttpModule.registerAsync({
       useFactory: () => ({
@@ -120,10 +133,11 @@ import { MaterialsModule } from './modules/materials/materials.module';
         maxRedirects: 5
       })
     }),
-    // CacheModule.registerAsync({
-    //   isGlobal: true,
-    //   useClass: CacheConfigService
-    // }),
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 300000,   // 5 minutes default TTL (in ms)
+      max: 100,      // max 100 items in memory
+    }),
     UsersModule,
     StudentsModule,
     ParentsModule,
@@ -151,6 +165,7 @@ import { MaterialsModule } from './modules/materials/materials.module';
     ChatbotModule,
     NotificationsModule,
     MaterialsModule,
+    TtsModule,
   ],
   controllers: [AppController],
   providers: [
@@ -163,13 +178,17 @@ import { MaterialsModule } from './modules/materials/materials.module';
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: RolesGuard,
-    // },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: HttpLoggerInterceptor,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

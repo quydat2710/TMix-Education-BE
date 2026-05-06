@@ -5,7 +5,8 @@ import { SessionEntity } from "./entities/session.entity";
 import { Class } from "modules/classes/class.domain";
 import { ClassesService } from "modules/classes/classes.service";
 import dayjs from "@/utils/dayjs.config";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
+import { RoleEnum } from "modules/roles/roles.enum";
 import { SessionMapper } from "./session.mapper";
 import { Session } from "./session.domain";
 import { UpdateAttendanceSessionDto } from "./dto/update-attendance-session.dto";
@@ -71,29 +72,9 @@ export class SessionRepository {
     const startDate = dayjs(classEntity.schedule.start_date);
     const endDate = dayjs(classEntity.schedule.end_date);
 
-    // DEBUG: Log schedule info
-    console.log('=== DEBUG getTodaySession ===');
-    console.log('Class ID:', id);
-    console.log('Class name:', classEntity.name);
-    console.log('Today day():', today.day());
-    console.log('Today format:', today.format('YYYY-MM-DD dddd'));
-    console.log('Schedule days_of_week:', classEntity.schedule.days_of_week);
-    console.log('Schedule days_of_week type:', typeof classEntity.schedule.days_of_week);
-    console.log('Schedule start_date:', classEntity.schedule.start_date);
-    console.log('Schedule end_date:', classEntity.schedule.end_date);
-    console.log('startDate dayjs:', startDate.format('YYYY-MM-DD'));
-    console.log('endDate dayjs:', endDate.format('YYYY-MM-DD'));
-    console.log('today >= startDate:', today >= startDate);
-    console.log('today <= endDate:', today <= endDate);
-
-    const checkDay = classEntity.schedule.days_of_week.find(
+    const checkDay = classEntity.schedule.days_of_week.some(
       (item) => parseInt(item) === today.day(),
-    )
-      ? true
-      : false;
-
-    console.log('checkDay result:', checkDay);
-    console.log('=== END DEBUG ===');
+    );
 
     const todayStart = dayjs().startOf('day').toDate();
     const todayEnd = dayjs().endOf('day').toDate();
@@ -153,6 +134,25 @@ export class SessionRepository {
   }
 
   async updateAttendanceSession(sessionId: Session['id'], payload: UpdateAttendanceSessionDto[]) {
+    // ─── Time-lock: Teachers can only edit within 24h ───
+    const currentUser = this.clsService.get('user');
+    const entity = await this.sessionRepository.findOne({
+      where: { id: sessionId },
+      relations: ['class.students', 'attendances.student']
+    });
+
+    if (!entity) return;
+
+    if (currentUser?.role === RoleEnum.teacher) {
+      const sessionDate = dayjs(entity.date);
+      const hoursSinceSession = dayjs().diff(sessionDate, 'hour');
+      if (hoursSinceSession > 24) {
+        throw new ForbiddenException(
+          'Quá hạn sửa điểm danh (24 giờ). Vui lòng liên hệ Admin để chỉnh sửa.'
+        );
+      }
+    }
+
     // Store old values before update for audit logging
     const oldAttendances = await this.attendanceSessionRepository.find({
       where: {
@@ -162,45 +162,31 @@ export class SessionRepository {
       relations: ['student']
     });
 
-    const entity = await this.sessionRepository.findOne({
-      where: { id: sessionId },
-      relations: ['class.students', 'attendances.student']
-    })
+    const classInfo = await this.classesService.findOne(entity.classId);
+    const activeStudentIds = classInfo.students
+      .filter(item => item.isActive)
+      .map(item => item.student.id);
 
-    if (!entity) return;
+    // Whitelist status values to prevent injection (defense in depth)
+    const VALID_STATUSES = new Set(['present', 'absent', 'late']);
 
-    const classInfo = await this.classesService.findOne(entity.classId)
-    const studentIds = classInfo.students.map(item => {
-      if (item.isActive) return item.student.id;
-    });
-    const statusCases = payload.map(item => `WHEN '${item.studentId}' THEN '${item.status}'`).join(' ')
-    const noteCases = payload.map(item => `WHEN '${item.studentId}' THEN '${item.note || ''}'`).join(' ')
+    // Safe per-student update using parameterized queries
+    for (const item of payload) {
+      if (!VALID_STATUSES.has(item.status)) continue; // skip invalid
+      if (!activeStudentIds.includes(item.studentId as any)) continue; // skip non-active
 
-    const updateRes = await this.attendanceSessionRepository.createQueryBuilder().update()
-      .set({
-        status: () => `CASE studentId ${statusCases} ELSE status END`,
-        note: () => `CASE studentId ${noteCases} ELSE note END`
-      })
-      .where('studentId IN (:...studentIds)', { studentIds })
-      .andWhere('sessionId = :sessionId', { sessionId })
-      .callListeners(false)
-      .execute()
-
-    for (const item of entity.attendances) {
-      for (const payloadItem of payload) {
-        if (item.student.id.toString() === payloadItem.studentId.toString()) {
-          item.isModified = payloadItem.isModified;
-          item.status = payloadItem.status
-        }
-      }
+      await this.attendanceSessionRepository.update(
+        { studentId: item.studentId as any, sessionId },
+        { status: item.status, note: item.note || '' },
+      );
     }
 
     // Audit logging after update
     await this.auditAttendanceChanges(sessionId, oldAttendances, entity.attendances, payload);
 
-    await this.paymentsService.autoUpdatePaymentRecord(entity)
+    // Only update teacher salary (payment invoices are generated monthly on the 5th)
     await this.teacherPaymentsService.autoUpdatePayment(entity);
-    return updateRes
+    return { success: true, updated: payload.length };
   }
 
   private async auditAttendanceChanges(

@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+*.log
+benchmark-results
+uploads
+.git
+.gitignore
+coverage

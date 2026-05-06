@@ -2,7 +2,6 @@ import { BadRequestException, Injectable, NotFoundException, UnauthorizedExcepti
 import { InjectRepository } from "@nestjs/typeorm";
 import { PaymentEntity } from "./entities/payment.entity";
 import { Between, FindOptionsWhere, In, MoreThan, Repository } from "typeorm";
-import dayjs from "@/utils/dayjs.config";
 import { FilterPaymentDto, SortPaymentDto } from "./dto/query-payment.dto";
 import { IPaginationOptions } from "utils/types/pagination-options";
 import { PaginationResponseDto } from "utils/types/pagination-response.dto";
@@ -11,7 +10,7 @@ import { PaymentMapper } from "./payment.mapper";
 import { PayStudentDto } from "./dto/pay-student.dto";
 import { I18nService } from "nestjs-i18n";
 import { I18nTranslations } from "@/generated/i18n.generated";
-import { SessionEntity } from "modules//sessions/entities/session.entity";
+import { ClassStudentEntity } from "modules/classes/entities/class-student.entity";
 import { GetQRDto } from "./dto/get-QR.dto";
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
@@ -28,56 +27,6 @@ export class PaymentRepository {
         private readonly httpService: HttpService,
         private readonly configService: ConfigService<AllConfigType>,
     ) { }
-
-    async autoUpdatePaymentRecord(session: SessionEntity) {
-        const month = dayjs(session.date).month() + 1;
-        const year = dayjs(session.date).year();
-        const classId = session.class.id
-        const paymentEntities = await this.paymentsRepository.find({
-            where: { month, year, classId },
-            relations: ['class']
-        })
-
-        if (paymentEntities.length <= 0) {
-            const paymentRecords = [];
-            session.attendances.filter(student => {
-                let totalLessons = 0;
-                let discountPercent = 0;
-                let totalAmount = 0;
-                if (student.status === 'present' || student.status === 'late') totalLessons++;
-                session.class.students.map(item => {
-                    if (item.studentId === student.student.id) {
-                        discountPercent = item.discountPercent;
-                        totalAmount = totalLessons * session.class.feePerLesson
-                    }
-                })
-                if (totalLessons <= 0) return false;
-                paymentRecords.push(this.paymentsRepository.create({
-                    month,
-                    year,
-                    totalLessons,
-                    totalAmount,
-                    discountPercent,
-                    studentId: student.studentId.toString(),
-                    classId: classId.toString()
-                }))
-            })
-            return await this.paymentsRepository.save(paymentRecords)
-        }
-        else if (paymentEntities.length > 0) {
-            for (const student of session.attendances) {
-                paymentEntities.map(item => {
-                    if (item.studentId === student.student.id && student.isModified === true) {
-                        item.totalLessons =
-                            student.status === 'present' || student.status === 'late' ? item.totalLessons + 1 : item.totalLessons;
-                        item.totalLessons =
-                            student.status === 'absent' && item.totalLessons > 0 ? item.totalLessons - 1 : item.totalLessons;
-                    }
-                })
-            }
-            return await this.paymentsRepository.save(paymentEntities)
-        }
-    }
 
     async getAllPayments(
         { filterOptions, sortOptions, paginationOptions }
@@ -213,50 +162,44 @@ export class PaymentRepository {
             }
         }
 
-        // Strategy 3: Search all pending payments and check if their referenceCode appears in the content/description
-        if (!payment) {
-            const fullText = `${confirmDto.content || ''} ${confirmDto.description || ''}`.toUpperCase();
-            const pendingPayments = await this.paymentsRepository.find({
-                where: [
-                    { status: 'pending' },
-                    { status: 'partial' }
-                ]
-            });
-
-            for (const p of pendingPayments) {
-                if (p.referenceCode && fullText.includes(p.referenceCode.toUpperCase())) {
-                    payment = p;
-                    break;
-                }
-            }
-        }
-
-        // Strategy 4: Match by student name + class name in content (banks strip diacritics + dots)
+        // Strategy 3+4: Single query for all pending/partial payments, then check referenceCode and name
         if (!payment) {
             const removeDiacritics = (str: string) =>
                 str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
 
-            const fullText = removeDiacritics(`${confirmDto.content || ''} ${confirmDto.description || ''}`).toUpperCase();
+            const rawText = `${confirmDto.content || ''} ${confirmDto.description || ''}`;
+            const fullTextUpper = rawText.toUpperCase();
+            const fullTextNormalized = removeDiacritics(rawText).toUpperCase();
+
             const pendingPayments = await this.paymentsRepository.find({
                 where: [
                     { status: 'pending' },
                     { status: 'partial' }
                 ],
-                relations: ['student', 'class']
+                relations: ['student', 'class'],
+                order: {
+                    year: 'ASC',
+                    month: 'ASC'
+                }
             });
 
             for (const p of pendingPayments) {
+                // Strategy 3: Check referenceCode in content
+                if (p.referenceCode && fullTextUpper.includes(p.referenceCode.toUpperCase())) {
+                    payment = p;
+                    break;
+                }
+
+                // Strategy 4: Match by student name + class name (banks strip diacritics + dots)
                 const studentName = removeDiacritics(p.student?.name || '').toUpperCase();
                 const className = removeDiacritics(p.class?.name || '').toUpperCase();
-                // Banks strip dots: "6.2" → "62"
                 const classNameNoDots = className.replace(/\./g, '');
-                
+
                 if (studentName && className) {
-                    const nameMatch = fullText.includes(studentName);
-                    const classMatch = fullText.includes(className) || fullText.includes(classNameNoDots);
+                    const nameMatch = fullTextNormalized.includes(studentName);
+                    const classMatch = fullTextNormalized.includes(className) || fullTextNormalized.includes(classNameNoDots);
                     if (nameMatch && classMatch) {
                         payment = p;
-                        console.log('[Webhook] Strategy 4 matched by student+class name:', studentName, className);
                         break;
                     }
                 }
@@ -264,7 +207,7 @@ export class PaymentRepository {
         }
 
         if (!payment) {
-            console.log('[Webhook] Payment not found. Content:', confirmDto.content, '| Code:', confirmDto.code, '| Description:', confirmDto.description);
+            // Payment not found — logged for webhook debugging
             return { success: false, message: 'Payment not found for reference code' }
         }
 
@@ -276,33 +219,93 @@ export class PaymentRepository {
             })
 
             await this.paymentsRepository.save(payment);
-            console.log('[Webhook] Payment confirmed! ID:', payment.id, 'Amount:', confirmDto.transferAmount);
+            // Payment confirmed via webhook
         }
-        return { success: true }
+        return { success: true, payment }
     }
 
     /**
-     * Generate payment invoices for all active students in a given month
+     * Generate payment invoices for all active students in a given month.
+     * Applies carry-over (bù trừ) from previous month's absences.
+     * Called on the 5th of each month via cron or admin trigger.
      */
     async generateInvoicesForMonth(month: number, year: number): Promise<any> {
-        // Find all classes that have students and are active
+        // Find existing invoices so we don't create duplicates
         const existingPayments = await this.paymentsRepository.find({
             where: { month, year }
         });
-
-        // Get unique student-class combos that already have invoices
         const existingCombos = new Set(
             existingPayments.map(p => `${p.studentId}-${p.classId}`)
         );
 
         // Find all active class-student enrollments
-        const { EntityManager } = require('typeorm');
-        const classStudentRepo = this.paymentsRepository.manager.getRepository('student_class');
-        const enrollments = await classStudentRepo.find({
+        const classStudentRepo = this.paymentsRepository.manager.getRepository(ClassStudentEntity);
+        const enrollments: any[] = await classStudentRepo.find({
             where: { isActive: true },
             relations: ['class']
         });
 
+        // ─── Calculate carry-over from previous month ───
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        const prevMonthStart = new Date(prevYear, prevMonth - 1, 1);
+        const prevMonthEnd = new Date(prevYear, prevMonth, 0, 23, 59, 59, 999);
+
+        // Get all sessions from previous month (for all classes)
+        const prevSessions = await this.paymentsRepository.manager
+            .getRepository('session')
+            .find({
+                where: { date: Between(prevMonthStart, prevMonthEnd) },
+                select: ['id', 'classId'],
+            });
+
+        // Build map: classId -> sessionIds
+        const classSessionMap = new Map<string, string[]>();
+        for (const s of prevSessions as any[]) {
+            const list = classSessionMap.get(s.classId) || [];
+            list.push(s.id);
+            classSessionMap.set(s.classId, list);
+        }
+
+        // Count absences per student per class in previous month
+        // carryOverMap: "studentId-classId" -> number of absent sessions
+        const carryOverMap = new Map<string, number>();
+        for (const [classId, sessionIds] of classSessionMap) {
+            if (sessionIds.length === 0) continue;
+
+            const totalSessionCount = sessionIds.length;
+
+            // Count present/late per student
+            const presentCounts: any[] = await this.paymentsRepository.manager.query(
+                `SELECT "studentId", COUNT(*) as "presentCount"
+                 FROM attendance_session
+                 WHERE "sessionId" = ANY($1)
+                   AND (status = 'present' OR status = 'late')
+                 GROUP BY "studentId"`,
+                [sessionIds],
+            );
+
+            const presentMap = new Map<string, number>();
+            for (const row of presentCounts) {
+                presentMap.set(row.studentId.toString(), Number(row.presentCount));
+            }
+
+            // Get all students who had attendance in these sessions
+            const allStudents: any[] = await this.paymentsRepository.manager.query(
+                `SELECT DISTINCT "studentId" FROM attendance_session WHERE "sessionId" = ANY($1)`,
+                [sessionIds],
+            );
+
+            for (const { studentId } of allStudents) {
+                const present = presentMap.get(studentId.toString()) || 0;
+                const absent = totalSessionCount - present;
+                if (absent > 0) {
+                    carryOverMap.set(`${studentId}-${classId}`, absent);
+                }
+            }
+        }
+
+        // ─── Generate invoices ───
         const newPayments: PaymentEntity[] = [];
 
         for (const enrollment of enrollments) {
@@ -311,13 +314,17 @@ export class PaymentRepository {
 
             const classEntity = enrollment.class;
             if (!classEntity || classEntity.status !== 'active') continue;
-            // Skip inactive (paused) students
-            if (enrollment.isActive === false) continue;
 
             // Estimate lessons in month based on days_of_week
             const daysPerWeek = classEntity.schedule?.days_of_week?.length || 0;
             const estimatedLessons = daysPerWeek * 4;
-            const totalAmount = estimatedLessons * classEntity.feePerLesson;
+            const feePerLesson = classEntity.feePerLesson;
+
+            // Calculate carry-over credit from previous month absences
+            const absentLastMonth = carryOverMap.get(combo) || 0;
+            const carryOverCredit = absentLastMonth * feePerLesson;
+
+            const totalAmount = Math.max(0, (estimatedLessons * feePerLesson) - carryOverCredit);
 
             if (totalAmount <= 0) continue;
 
@@ -342,6 +349,7 @@ export class PaymentRepository {
             generated: newPayments.length,
             month,
             year,
+            payments: newPayments,
             message: `Generated ${newPayments.length} new invoices for ${month}/${year}`
         };
     }

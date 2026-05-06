@@ -15,7 +15,6 @@ export class Session {
     class: Partial<Class>
 
     attendances: {
-        isModified?: boolean,
         status: string,
         student: Partial<Student>,
         note?: string

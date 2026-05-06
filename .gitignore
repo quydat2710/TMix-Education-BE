@@ -43,8 +43,6 @@ Dockerfile
 # Temporary scripts
 fix-password.ts
 reset-admin-password.ts
-reset-admin-password.ts
-fix-password.ts
 columns.txt
 
 # Firebase service account key
@@ -52,3 +50,6 @@ columns.txt
 
 # Uploaded materials (stored on server only)
 /uploads
+
+# Benchmark results (machine-specific)
+/benchmark-results

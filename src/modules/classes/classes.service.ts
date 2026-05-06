@@ -130,17 +130,17 @@ export class ClassesService {
             this.i18nService.t('class.FAIL.STUDENT_ALREADY_IN_CLASS'),
           );
 
-        //check date overlap. If no conflict, break
+        //check date overlap. If no conflict, skip to next class
         if (!this.isDateOverlap(eachClass.class.schedule, aclass.schedule))
-          break;
+          continue;
 
-        //check day of week overlap. If no conflict, break
+        //check day of week overlap. If no conflict, skip to next class
         if (!this.isDayOverlap(eachClass.class.schedule, aclass.schedule))
-          break;
+          continue;
 
-        //check time slots overlap. If no conflict, break
+        //check time slots overlap. If no conflict, skip to next class
         if (!this.isTimeSlotOverlap(eachClass.class.schedule, aclass.schedule))
-          break;
+          continue;
 
         //if conflict found, return error
         throw new BadRequestException(
@@ -163,20 +163,35 @@ export class ClassesService {
 
   async updateClassStatus() {
     const classes = await this.classRepository.findAll();
-    for(const aclass of classes) {
-      const now = Date.now();
+    const now = Date.now();
+    type ClassStatus = 'active' | 'upcoming' | 'closed';
+    const updates: { id: string; status: ClassStatus }[] = [];
+
+    for (const aclass of classes) {
       const startDate = new Date(aclass.schedule.start_date).getTime();
       const endDate = new Date(aclass.schedule.end_date).getTime();
-      let newStatus = aclass.status;
-      if(now < startDate) {
+      let newStatus: ClassStatus;
+
+      if (now < startDate) {
         newStatus = 'upcoming';
-      } else if(now > endDate) {
+      } else if (now > endDate) {
         newStatus = 'closed';
       } else {
         newStatus = 'active';
       }
-      await this.classRepository.update(aclass.id, { status: newStatus });
+
+      // Only update if status actually changed
+      if (newStatus !== aclass.status) {
+        updates.push({ id: aclass.id, status: newStatus });
+      }
     }
+
+    // Batch update only changed classes
+    for (const { id, status } of updates) {
+      await this.classRepository.update(id, { status });
+    }
+
+    return { checked: classes.length, updated: updates.length };
   }
 
   private isDateOverlap(schedule1: Schedule, schedule2: Schedule) {

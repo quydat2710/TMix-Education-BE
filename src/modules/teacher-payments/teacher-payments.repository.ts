@@ -19,7 +19,7 @@ import { ClassesService } from '../classes/classes.service';
 import { BadRequestException } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
-import { method } from 'lodash';
+
 
 export class TeacherPaymentRepository {
   constructor(

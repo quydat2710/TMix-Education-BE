@@ -21,6 +21,4 @@ export class AttendanceSessionEntity {
 
     @ManyToOne(() => SessionEntity, session => session.attendances, { eager: true })
     session?: SessionEntity
-
-    isModified?: boolean;
 }

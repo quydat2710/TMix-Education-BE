@@ -5,7 +5,6 @@ import { IPaginationOptions } from 'utils/types/pagination-options';
 import { PaginationResponseDto } from 'utils/types/pagination-response.dto';
 import { Payment } from './payment.domain';
 import { PayStudentDto } from './dto/pay-student.dto';
-import { SessionEntity } from 'modules/sessions/entities/session.entity';
 import { GetQRDto } from './dto/get-QR.dto';
 import { ConfirmDto } from './dto/confirm.dto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20,10 +19,6 @@ export class PaymentsService {
     private paymentRepository: PaymentRepository,
     private notificationsService: NotificationsService,
   ) { }
-
-  autoUpdatePaymentRecord(session: SessionEntity) {
-    return this.paymentRepository.autoUpdatePaymentRecord(session)
-  }
 
   getAllPayments(
     { filterOptions, sortOptions, paginationOptions }
@@ -43,6 +38,17 @@ export class PaymentsService {
         message: `Một khoản học phí đã được ghi nhận thanh toán thủ công.`,
         link: '/admin/statistics/financial',
       });
+
+      // Notify parent about successful payment
+      if (result?.student?.id) {
+        const amount = payStudentDto.amount?.toLocaleString('vi-VN') || '0';
+        await this.notificationsService.sendToParentOfStudent(result.student.id.toString(), {
+          type: NotificationType.PAYMENT_SUCCESS,
+          title: 'Thanh toán thành công',
+          message: `Đã nhận thanh toán ${amount}đ cho con bạn. Cảm ơn quý phụ huynh!`,
+          link: '/parent/payments',
+        });
+      }
     } catch (e) {
       this.logger.warn(`Failed to send payment notification: ${e.message}`);
     }
@@ -57,7 +63,7 @@ export class PaymentsService {
   async confirmPayment(confirmDto: ConfirmDto, apiKey: string) {
     const result = await this.paymentRepository.confirmPayment(confirmDto, apiKey);
 
-    // Notify admins about payment confirmation
+    // Notify admins and parent about payment confirmation
     try {
       await this.notificationsService.sendToRole('admin', {
         type: NotificationType.PAYMENT_SUCCESS,
@@ -65,6 +71,17 @@ export class PaymentsService {
         message: `Một giao dịch thanh toán đã được xác nhận qua ngân hàng.`,
         link: '/admin/statistics/financial',
       });
+
+      // Notify parent about successful bank transfer
+      if (result?.success && result?.payment?.studentId) {
+        const amount = confirmDto.transferAmount?.toLocaleString('vi-VN') || '0';
+        await this.notificationsService.sendToParentOfStudent(result.payment.studentId, {
+          type: NotificationType.PAYMENT_SUCCESS,
+          title: 'Thanh toán thành công',
+          message: `Đã nhận thanh toán ${amount}đ qua chuyển khoản cho con bạn. Cảm ơn quý phụ huynh!`,
+          link: '/parent/payments',
+        });
+      }
     } catch (e) {
       this.logger.warn(`Failed to send confirm notification: ${e.message}`);
     }
@@ -72,8 +89,26 @@ export class PaymentsService {
     return result;
   }
 
-  generateInvoices(month: number, year: number) {
-    return this.paymentRepository.generateInvoicesForMonth(month, year)
-  }
+  async generateInvoices(month: number, year: number) {
+    const result = await this.paymentRepository.generateInvoicesForMonth(month, year);
 
+    // Notify parents about new invoices
+    if (result?.payments?.length > 0) {
+      for (const payment of result.payments) {
+        try {
+          const amount = payment.totalAmount?.toLocaleString('vi-VN') || '0';
+          await this.notificationsService.sendToParentOfStudent(payment.studentId, {
+            type: NotificationType.NEW_INVOICE,
+            title: `Học phí tháng ${month}/${year}`,
+            message: `Học phí tháng ${month} của con bạn là ${amount}đ. Vui lòng thanh toán trước ngày 10.`,
+            link: '/parent/payments',
+          });
+        } catch (e) {
+          this.logger.warn(`Failed to send invoice notification for student ${payment.studentId}: ${e.message}`);
+        }
+      }
+    }
+
+    return result;
+  }
 }

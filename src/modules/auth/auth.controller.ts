@@ -9,8 +9,10 @@ import { RoleEnum } from '../roles/roles.enum';
 import { User } from 'modules/users/user.domain';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
+@Throttle({ default: { ttl: 60000, limit: 5 } }) // 5 requests per minute for auth
 export class AuthController {
   constructor(
     private readonly authService: AuthService,

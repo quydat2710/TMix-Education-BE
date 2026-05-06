@@ -38,9 +38,13 @@ export class AuthService {
     }
 
     const refreshToken = this.createRefreshToken(payload)
+    const isProduction = this.configService.get('app.nodeEnv', { infer: true }) === 'production';
     response.cookie('refresh_token', refreshToken, {
       httpOnly: true,
-      maxAge: 2592000 * 1000
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 2592000 * 1000,
     })
 
     await this.usersService.updateUserToken(user, refreshToken)
@@ -84,9 +88,13 @@ export class AuthService {
         const refresh_token = this.createRefreshToken(payload)
         this.usersService.updateUserToken(user, refresh_token)
         response.clearCookie('refresh_token')
+        const isProduction = this.configService.get('app.nodeEnv', { infer: true }) === 'production';
         response.cookie('refresh_token', refresh_token, {
           httpOnly: true,
-          maxAge: 2592000 * 1000
+          secure: isProduction,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 2592000 * 1000,
         });
 
         return {

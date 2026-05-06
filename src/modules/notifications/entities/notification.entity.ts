@@ -13,6 +13,8 @@ export enum NotificationType {
   PAYMENT_SUCCESS = 'payment_success',
   NEW_REGISTRATION = 'new_registration',
   SCHEDULE_CHANGE = 'schedule_change',
+  ATTENDANCE_UPDATE = 'attendance_update',
+  NEW_INVOICE = 'new_invoice',
   GENERAL = 'general',
 }
 
