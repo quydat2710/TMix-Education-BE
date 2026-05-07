@@ -35,10 +35,12 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.EC2_HOST }}
           REMOTE_USER: ${{ secrets.EC2_USER }}
-          SOURCE: "dist/ package.json package-lock.json"
+          SOURCE: "dist package.json package-lock.json"
           TARGET: /home/ubuntu/TMix-Education-BE/
           SCRIPT_BEFORE: |
             echo "🔄 Starting deployment..."
+            echo "Cleaning old dist..."
+            rm -rf /home/ubuntu/TMix-Education-BE/dist
           SCRIPT_AFTER: |
             echo "=== DEPLOY START ==="
             cd /home/ubuntu/TMix-Education-BE
