@@ -77,9 +77,6 @@ export class PaymentRepository {
     }
 
     handleProcessPayment(entity: PaymentEntity, payStudentDto: PayStudentDto) {
-        const logger = new Logger('PaymentProcess');
-        logger.log(`Processing payment: id=${entity.id}, totalAmount=${entity.totalAmount}, discountPercent=${entity.discountPercent}, paidAmount=${entity.paidAmount}, status=${entity.status}, histories=${JSON.stringify(entity.histories?.length)}, inputAmount=${payStudentDto.amount}`);
-        
         if (entity.totalLessons === 0) throw new BadRequestException('No lessons');
         if (entity.status === 'paid') throw new BadRequestException('Fully paid');
         
@@ -88,9 +85,7 @@ export class PaymentRepository {
         const remaining = netTotal - entity.paidAmount;
         const actualAmount = Math.min(+payStudentDto.amount, remaining);
         
-        logger.log(`netTotal=${netTotal}, remaining=${remaining}, actualAmount=${actualAmount}`);
-        
-        if (actualAmount <= 0) throw new BadRequestException(`Payment already completed (remaining=${remaining})`);
+        if (actualAmount <= 0) throw new BadRequestException('Payment already completed');
         
         if (Array.isArray(entity.histories)) {
             entity.histories.push({
@@ -151,12 +146,12 @@ export class PaymentRepository {
 
 
     async confirmPayment(confirmDto: ConfirmDto, apiKey: string) {
-        const logger = new Logger('ConfirmPayment');
+        const logger = new Logger('PaymentWebhook');
         const systemApiKey = this.configService.get('payment.apiKey', { infer: true })
 
         if (apiKey !== `Apikey ${systemApiKey}`) throw new UnauthorizedException('Please authenticate')
 
-        logger.log(`Webhook received: transferAmount=${confirmDto.transferAmount}, content="${confirmDto.content}", code="${confirmDto.code}"`);
+        logger.log(`Webhook: amount=${confirmDto.transferAmount}, type=${confirmDto.transferType}`);
 
         let payment: PaymentEntity | null = null;
 
@@ -165,7 +160,7 @@ export class PaymentRepository {
             payment = await this.paymentsRepository.findOne({
                 where: { referenceCode: confirmDto.code }
             });
-            if (payment) logger.log(`Matched by Strategy 1 (code): paymentId=${payment.id}`);
+
         }
 
         // Strategy 2: Try last word of content (original approach)
@@ -176,7 +171,7 @@ export class PaymentRepository {
                 payment = await this.paymentsRepository.findOne({
                     where: { referenceCode: lastWord }
                 });
-                if (payment) logger.log(`Matched by Strategy 2 (lastWord=${lastWord}): paymentId=${payment.id}`);
+
             }
         }
 
@@ -201,7 +196,7 @@ export class PaymentRepository {
                 }
             });
 
-            logger.log(`Found ${pendingPayments.length} pending/partial payments to check`);
+
 
             const candidatesByName: PaymentEntity[] = [];
 
@@ -209,7 +204,7 @@ export class PaymentRepository {
                 // Strategy 3: Check referenceCode in content
                 if (p.referenceCode && fullTextUpper.includes(p.referenceCode.toUpperCase())) {
                     payment = p;
-                    logger.log(`Matched by Strategy 3 (refCode in content): paymentId=${p.id}, refCode=${p.referenceCode}`);
+
                     break;
                 }
 
@@ -223,7 +218,7 @@ export class PaymentRepository {
                     const classMatch = fullTextNormalized.includes(className) || fullTextNormalized.includes(classNameNoDots);
                     if (nameMatch && classMatch) {
                         candidatesByName.push(p);
-                        logger.log(`Strategy 4 candidate: paymentId=${p.id}, student="${p.student?.name}", class="${p.class?.name}", totalAmount=${p.totalAmount}, paidAmount=${p.paidAmount}, status=${p.status}`);
+
                     }
                 }
             }
@@ -237,16 +232,16 @@ export class PaymentRepository {
                     return Math.abs(netA - transferAmount) - Math.abs(netB - transferAmount);
                 });
                 payment = candidatesByName[0];
-                logger.log(`Best match by amount: paymentId=${payment.id}, netRemaining=${payment.totalAmount - (payment.discountPercent * payment.totalAmount / 100) - payment.paidAmount}`);
+
             }
         }
 
         if (!payment) {
-            logger.warn(`No payment found for webhook content="${confirmDto.content}"`);
+            logger.warn(`No payment matched for content="${confirmDto.content}"`);
             return { success: false, message: 'Payment not found for reference code' }
         }
 
-        logger.log(`Final matched payment: id=${payment.id}, status=${payment.status}, totalAmount=${payment.totalAmount}, paidAmount=${payment.paidAmount}, discountPercent=${payment.discountPercent}`);
+        logger.log(`Payment matched: id=${payment.id}, student=${payment.student?.name}`);
 
         if (confirmDto && confirmDto.transferType === 'in' && confirmDto.transferAmount > 0) {
             this.handleProcessPayment(payment, {

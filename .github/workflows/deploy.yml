@@ -38,40 +38,13 @@ jobs:
           SOURCE: "dist package.json package-lock.json"
           TARGET: /home/ubuntu/TMix-Education-BE/
           SCRIPT_BEFORE: |
-            echo "🔄 Starting deployment..."
-            echo "Cleaning old dist..."
             rm -rf /home/ubuntu/TMix-Education-BE/dist
           SCRIPT_AFTER: |
-            echo "=== DEPLOY START ==="
             cd /home/ubuntu/TMix-Education-BE
             npm install --production --legacy-peer-deps
-            
-            echo "=== Current PM2 status ==="
-            pm2 list || true
-            pm2 describe tmix-backend || true
-            
-            echo "=== Stopping and deleting ALL PM2 processes ==="
             pm2 stop all || true
             pm2 delete all || true
-            
-            echo "=== Verifying port 3000 is free ==="
-            sudo fuser -k 3000/tcp || true
-            sleep 2
-            
-            echo "=== Starting backend from /home/ubuntu/TMix-Education-BE ==="
             pm2 start /home/ubuntu/TMix-Education-BE/dist/main.js --name tmix-backend
-            
-            echo "=== Starting TTS server ==="
             pm2 start /home/ubuntu/TMix-TTS-Server/server.py --name tmix-tts --interpreter python3 || true
-            
-            echo "=== Saving PM2 state ==="
             pm2 save --force
-            
-            echo "=== Final PM2 status ==="
-            pm2 list
-            
-            echo "=== Verifying port 3000 ==="
-            sleep 3
-            curl -s http://localhost:3000/api || echo "Backend not responding yet"
-            
-            echo "=== DEPLOY COMPLETE ==="
+            echo "✅ Backend deployed successfully!"
