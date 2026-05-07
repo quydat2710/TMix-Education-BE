@@ -42,7 +42,18 @@ jobs:
           SCRIPT_AFTER: |
             cd /home/ubuntu/TMix-Education-BE
             npm install --production --legacy-peer-deps
-            pm2 delete tmix-backend || true
-            pm2 start dist/main.js --name tmix-backend --cwd /home/ubuntu/TMix-Education-BE
+            echo "--- Killing ALL pm2 processes ---"
+            pm2 kill || true
+            sleep 2
+            echo "--- Killing anything on port 3000 ---"
+            sudo fuser -k 3000/tcp || true
+            sleep 1
+            echo "--- Starting fresh from TMix-Education-BE ---"
+            cd /home/ubuntu/TMix-Education-BE
+            NODE_ENV=production pm2 start dist/main.js --name tmix-backend
+            echo "--- Restarting TTS server ---"
+            cd /home/ubuntu/TMix-TTS-Server
+            pm2 start server.py --name tmix-tts --interpreter python3 || true
             pm2 save
-            echo "✅ Backend deployed successfully!"
+            pm2 list
+            echo "✅ All services deployed successfully!"
