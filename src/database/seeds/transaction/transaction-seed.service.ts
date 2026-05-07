@@ -43,31 +43,37 @@ export class TransactionSeedService {
         const expenseCategories = categories.filter(c => c.type === 'expense');
 
         const transactionData = [
-            // January 2026
-            { amount: 45000000, description: 'Thu học phí tháng 1/2026 - các lớp active', date: '2026-01-10', categoryType: 'revenue', categoryName: 'Học phí' },
-            { amount: 12000000, description: 'Thanh toán lương GV tháng 12/2025', date: '2026-01-05', categoryType: 'expense', categoryName: 'Lương giáo viên' },
-            { amount: 8000000, description: 'Thuê phòng học tháng 1/2026', date: '2026-01-02', categoryType: 'expense', categoryName: 'Thuê phòng học' },
-            { amount: 2500000, description: 'Tiền điện nước tháng 12/2025', date: '2026-01-08', categoryType: 'expense', categoryName: 'Điện nước' },
-            { amount: 3500000, description: 'Mua sách giáo trình Oxford cho lớp 6, 7', date: '2026-01-15', categoryType: 'expense', categoryName: 'Mua sách giáo khoa' },
-            { amount: 1500000, description: 'Phí thi thử IELTS Mock Test tháng 1', date: '2026-01-20', categoryType: 'revenue', categoryName: 'Phí thi thử' },
-            { amount: 800000, description: 'Mua giấy in, bút, phấn', date: '2026-01-12', categoryType: 'expense', categoryName: 'Văn phòng phẩm' },
-
-            // February 2026
-            { amount: 48000000, description: 'Thu học phí tháng 2/2026 - các lớp active', date: '2026-02-05', categoryType: 'revenue', categoryName: 'Học phí' },
-            { amount: 15000000, description: 'Thanh toán lương GV tháng 1/2026', date: '2026-02-03', categoryType: 'expense', categoryName: 'Lương giáo viên' },
-            { amount: 8000000, description: 'Thuê phòng học tháng 2/2026', date: '2026-02-01', categoryType: 'expense', categoryName: 'Thuê phòng học' },
-            { amount: 2800000, description: 'Tiền điện nước tháng 1/2026', date: '2026-02-10', categoryType: 'expense', categoryName: 'Điện nước' },
-            { amount: 2000000, description: 'Bán tài liệu ôn thi cho học sinh lớp 9, 12', date: '2026-02-15', categoryType: 'revenue', categoryName: 'Bán tài liệu' },
-            { amount: 1200000, description: 'Sửa máy chiếu phòng C303', date: '2026-02-20', categoryType: 'expense', categoryName: 'Bảo trì thiết bị' },
-
             // March 2026
-            { amount: 42000000, description: 'Thu học phí tháng 3/2026 - các lớp active (chưa đủ)', date: '2026-03-05', categoryType: 'revenue', categoryName: 'Học phí' },
-            { amount: 15500000, description: 'Thanh toán lương GV tháng 2/2026', date: '2026-03-02', categoryType: 'expense', categoryName: 'Lương giáo viên' },
-            { amount: 8000000, description: 'Thuê phòng học tháng 3/2026', date: '2026-03-01', categoryType: 'expense', categoryName: 'Thuê phòng học' },
-            { amount: 2600000, description: 'Tiền điện nước tháng 2/2026', date: '2026-03-08', categoryType: 'expense', categoryName: 'Điện nước' },
-            { amount: 4200000, description: 'Mua sách Cambridge IELTS 18, 19 cho lớp luyện thi', date: '2026-03-06', categoryType: 'expense', categoryName: 'Mua sách giáo khoa' },
-            { amount: 1800000, description: 'Phí thi thử IELTS Mock Test tháng 3', date: '2026-03-09', categoryType: 'revenue', categoryName: 'Phí thi thử' },
-            { amount: 950000, description: 'Mua mực in, giấy A4', date: '2026-03-04', categoryType: 'expense', categoryName: 'Văn phòng phẩm' },
+            { amount: 45000000, description: 'Thu học phí tháng 3/2026 - các lớp active', date: '2026-03-10', categoryType: 'revenue', categoryName: 'Học phí' },
+            { amount: 12000000, description: 'Thanh toán lương GV tháng 2/2026', date: '2026-03-05', categoryType: 'expense', categoryName: 'Lương giáo viên' },
+            { amount: 8000000, description: 'Thuê phòng học tháng 3/2026', date: '2026-03-02', categoryType: 'expense', categoryName: 'Thuê phòng học' },
+            { amount: 2500000, description: 'Tiền điện nước tháng 2/2026', date: '2026-03-08', categoryType: 'expense', categoryName: 'Điện nước' },
+            { amount: 3500000, description: 'Mua sách giáo trình Oxford cho lớp 6, 7', date: '2026-03-15', categoryType: 'expense', categoryName: 'Mua sách giáo khoa' },
+            { amount: 1500000, description: 'Phí thi thử IELTS Mock Test tháng 3', date: '2026-03-20', categoryType: 'revenue', categoryName: 'Phí thi thử' },
+            { amount: 800000, description: 'Mua giấy in, bút, phấn', date: '2026-03-12', categoryType: 'expense', categoryName: 'Văn phòng phẩm' },
+
+            // April 2026
+            { amount: 48000000, description: 'Thu học phí tháng 4/2026 - các lớp active', date: '2026-04-05', categoryType: 'revenue', categoryName: 'Học phí' },
+            { amount: 15000000, description: 'Thanh toán lương GV tháng 3/2026', date: '2026-04-03', categoryType: 'expense', categoryName: 'Lương giáo viên' },
+            { amount: 8000000, description: 'Thuê phòng học tháng 4/2026', date: '2026-04-01', categoryType: 'expense', categoryName: 'Thuê phòng học' },
+            { amount: 2800000, description: 'Tiền điện nước tháng 3/2026', date: '2026-04-10', categoryType: 'expense', categoryName: 'Điện nước' },
+            { amount: 2000000, description: 'Bán tài liệu ôn thi cho học sinh lớp 9, 12', date: '2026-04-15', categoryType: 'revenue', categoryName: 'Bán tài liệu' },
+            { amount: 1200000, description: 'Sửa máy chiếu phòng C303', date: '2026-04-20', categoryType: 'expense', categoryName: 'Bảo trì thiết bị' },
+
+            // May 2026
+            { amount: 42000000, description: 'Thu học phí tháng 5/2026 - các lớp active (chưa đủ)', date: '2026-05-05', categoryType: 'revenue', categoryName: 'Học phí' },
+            { amount: 15500000, description: 'Thanh toán lương GV tháng 4/2026', date: '2026-05-02', categoryType: 'expense', categoryName: 'Lương giáo viên' },
+            { amount: 8000000, description: 'Thuê phòng học tháng 5/2026', date: '2026-05-01', categoryType: 'expense', categoryName: 'Thuê phòng học' },
+            { amount: 2600000, description: 'Tiền điện nước tháng 4/2026', date: '2026-05-08', categoryType: 'expense', categoryName: 'Điện nước' },
+            { amount: 4200000, description: 'Mua sách Cambridge IELTS 18, 19 cho lớp luyện thi', date: '2026-05-06', categoryType: 'expense', categoryName: 'Mua sách giáo khoa' },
+            { amount: 1800000, description: 'Phí thi thử IELTS Mock Test tháng 5', date: '2026-05-09', categoryType: 'revenue', categoryName: 'Phí thi thử' },
+            { amount: 950000, description: 'Mua mực in, giấy A4', date: '2026-05-04', categoryType: 'expense', categoryName: 'Văn phòng phẩm' },
+
+            // June 2026 (partial - up to demo date)
+            { amount: 50000000, description: 'Thu học phí tháng 6/2026 - các lớp active', date: '2026-06-05', categoryType: 'revenue', categoryName: 'Học phí' },
+            { amount: 16000000, description: 'Thanh toán lương GV tháng 5/2026', date: '2026-06-03', categoryType: 'expense', categoryName: 'Lương giáo viên' },
+            { amount: 8000000, description: 'Thuê phòng học tháng 6/2026', date: '2026-06-01', categoryType: 'expense', categoryName: 'Thuê phòng học' },
+            { amount: 3000000, description: 'Tiền điện nước tháng 5/2026', date: '2026-06-08', categoryType: 'expense', categoryName: 'Điện nước' },
         ];
 
         for (const tx of transactionData) {

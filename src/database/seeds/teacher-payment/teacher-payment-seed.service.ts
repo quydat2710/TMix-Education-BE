@@ -51,7 +51,7 @@ export class TeacherPaymentSeedService {
                 if (!schedule) continue;
 
                 const startDate = new Date(schedule.start_date);
-                const endDate = aclass.status === 'active' ? new Date('2026-03-30') : new Date(schedule.end_date);
+                const endDate = aclass.status === 'active' ? new Date('2026-06-12') : new Date(schedule.end_date);
 
                 // Sessions trong lớp này
                 const totalSessions = await this.sessionRepository.count({
@@ -95,7 +95,7 @@ export class TeacherPaymentSeedService {
                 const totalAmount = totalLessons * salaryPerLesson;
 
                 // Xác định trạng thái thanh toán (deterministic - dựa trên tháng)
-                const today = new Date('2026-03-30');
+                const today = new Date('2026-06-12');
                 const paymentMonth = new Date(year, month - 1, 1);
                 const monthsDiff = (today.getFullYear() - paymentMonth.getFullYear()) * 12 +
                     (today.getMonth() - paymentMonth.getMonth());

@@ -31,7 +31,7 @@ export class PaymentSeedService {
             if (!schedule) continue;
 
             const startDate = new Date(schedule.start_date);
-            const endDate = aclass.status === 'active' ? new Date('2026-03-10') : new Date(schedule.end_date);
+            const endDate = aclass.status === 'active' ? new Date('2026-06-12') : new Date(schedule.end_date);
 
             // Determine which months need payments
             const months: { month: number; year: number }[] = [];
@@ -74,7 +74,7 @@ export class PaymentSeedService {
                         });
                     } else {
                         // Active classes: mix of statuses
-                        const today = new Date('2026-03-10');
+                        const today = new Date('2026-06-12');
                         const paymentMonth = new Date(year, month - 1, 1);
                         const monthsDiff = (today.getFullYear() - paymentMonth.getFullYear()) * 12 +
                             (today.getMonth() - paymentMonth.getMonth());

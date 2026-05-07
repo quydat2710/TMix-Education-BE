@@ -131,7 +131,7 @@ export class TestSeedService {
                     const percentage = Math.round((score / totalPoints) * 100);
                     const passed = percentage >= template.passingScore;
 
-                    const startedAt = new Date('2026-02-15');
+                    const startedAt = new Date('2026-04-15');
                     startedAt.setDate(startedAt.getDate() + Math.floor(Math.random() * 20));
                     const submittedAt = new Date(startedAt);
                     submittedAt.setMinutes(submittedAt.getMinutes() + Math.floor(Math.random() * template.duration));
