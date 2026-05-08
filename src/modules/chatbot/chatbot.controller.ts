@@ -1,6 +1,6 @@
-import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, HttpException, HttpStatus, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ChatbotService } from './chatbot.service';
+import { ChatbotService, ChatUser } from './chatbot.service';
 import { SendMessageDto } from './dto/send-message.dto';
 
 @Controller('chatbot')
@@ -9,7 +9,7 @@ export class ChatbotController {
     constructor(private readonly chatbotService: ChatbotService) {}
 
     @Post('send')
-    async sendMessage(@Body() dto: SendMessageDto) {
+    async sendMessage(@Body() dto: SendMessageDto, @Req() req: any) {
         if (!this.chatbotService.isReady()) {
             throw new HttpException(
                 'AI service is not configured',
@@ -18,7 +18,9 @@ export class ChatbotController {
         }
 
         try {
-            const reply = await this.chatbotService.sendMessage(dto);
+            // Extract authenticated user from JWT (global guard already applied)
+            const user: ChatUser | undefined = req.user;
+            const reply = await this.chatbotService.sendMessage(dto, user);
             return { reply };
         } catch (error: any) {
             throw new HttpException(

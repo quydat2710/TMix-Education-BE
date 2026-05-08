@@ -58,9 +58,13 @@ export class GroqService {
 
     /**
      * Chat completion for Chatbot (multi-turn conversation)
+     * @param messages - conversation messages
+     * @param options - optional temperature (default 0.4) and maxTokens (default 2048)
+     * @param retries - number of retries on rate limit
      */
     async chatCompletion(
         messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+        options?: { temperature?: number; maxTokens?: number },
         retries = 2,
     ): Promise<string> {
         for (let attempt = 0; attempt <= retries; attempt++) {
@@ -68,8 +72,9 @@ export class GroqService {
                 const completion = await this.client.chat.completions.create({
                     messages,
                     model: 'llama-3.3-70b-versatile',
-                    temperature: 0.7,
-                    max_tokens: 2048,
+                    temperature: options?.temperature ?? 0.4,
+                    max_tokens: options?.maxTokens ?? 2048,
+                    top_p: 0.9,
                 });
 
                 return completion.choices[0]?.message?.content || '';
