@@ -149,6 +149,12 @@ export class ClassesController {
     return this.classesService.update(id, updateClassDto);
   }
 
+  @Delete(':id')
+  @ResponseMessage('class.SUCCESS.DELETE_A_CLASS')
+  remove(@Param('id') id: Class['id']) {
+    return this.classesService.delete(id);
+  }
+
   @Get(':id/banner-info')
   @Public()
   @ResponseMessage('class.SUCCESS.GET_CLASS_BANNER_INFO')

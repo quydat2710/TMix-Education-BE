@@ -19,6 +19,7 @@ import {
 } from 'modules/students/dto/query-student.dto';
 import { I18nService } from 'nestjs-i18n';
 import { I18nTranslations } from '@/generated/i18n.generated';
+import { PaymentsService } from 'modules/payments/payments.service';
 
 @Injectable()
 export class ClassesService {
@@ -27,6 +28,7 @@ export class ClassesService {
     private teachersService: TeachersService,
     private studentsService: StudentsService,
     private i18nService: I18nService<I18nTranslations>,
+    private paymentsService: PaymentsService,
   ) {}
   create(createClassDto: CreateClassDto) {
     return this.classRepository.create(createClassDto);
@@ -64,6 +66,30 @@ export class ClassesService {
 
   update(id: Class['id'], updateClassDto: UpdateClassDto) {
     return this.classRepository.update(id, updateClassDto);
+  }
+
+  async delete(id: Class['id']) {
+    const classItem = await this.classRepository.findById(id);
+    if (!classItem) {
+      throw new BadRequestException(this.i18nService.t('class.FAIL.NOT_FOUND'));
+    }
+
+    // Check if class has students
+    if (classItem.students && classItem.students.length > 0) {
+      throw new BadRequestException(
+        'Không thể xóa lớp học đang có học sinh. Vui lòng xóa hết học sinh trước.',
+      );
+    }
+
+    // Check if class has teacher assigned
+    if (classItem.teacher) {
+      throw new BadRequestException(
+        'Không thể xóa lớp học đã có giáo viên. Vui lòng gỡ giáo viên trước.',
+      );
+    }
+
+    await this.classRepository.softDelete(id);
+    return { deleted: true };
   }
 
   async assignTeacherToClass(id: Class['id'], teacherId: Teacher['id']) {
@@ -154,7 +180,12 @@ export class ClassesService {
         );
       }
     }
-    return await this.classRepository.addStudentsToClass(id, students);
+    await this.classRepository.addStudentsToClass(id, students);
+
+    // Auto-generate pro-rata invoices for the current month
+    this.paymentsService.generateInvoiceForNewStudents(id, students).catch((err) => {
+      console.warn(`[AutoInvoice] Failed to generate invoices for class ${id}:`, err.message);
+    });
   }
 
   async removeStudentsFromClass(id: Class['id'], students: Student['id'][]) {

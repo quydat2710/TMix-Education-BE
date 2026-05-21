@@ -111,4 +111,11 @@ export class PaymentsService {
 
     return result;
   }
+
+  async generateInvoiceForNewStudents(
+    classId: string,
+    students: { studentId: string; discountPercent: number }[],
+  ) {
+    return this.paymentRepository.generateInvoiceForNewStudents(classId, students);
+  }
 }

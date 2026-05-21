@@ -88,6 +88,11 @@ export class ClassRepository {
     return ClassMapper.toDomain(entity);
   }
 
+  async softDelete(id: Class['id']): Promise<void> {
+    await this.classStudentRepository.delete({ classId: id });
+    await this.classRepository.delete(id);
+  }
+
   async findManyWithPagination({
     filterOptions,
     sortOptions,

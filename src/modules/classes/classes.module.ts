@@ -8,13 +8,15 @@ import { TeachersModule } from 'modules/teachers/teachers.module';
 import { StudentsModule } from 'modules/students/students.module';
 import { ClassStudentEntity } from './entities/class-student.entity';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ClassEntity, ClassStudentEntity]),
     TeachersModule,
     StudentsModule,
-    AuditLogModule
+    AuditLogModule,
+    PaymentsModule
   ],
   controllers: [ClassesController],
   providers: [ClassesService, ClassRepository],

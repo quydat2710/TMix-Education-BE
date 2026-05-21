@@ -386,4 +386,101 @@ export class PaymentRepository {
             message: `Generated ${newPayments.length} new invoices for ${month}/${year}`
         };
     }
+
+    /**
+     * Generate pro-rata invoices for specific students just added to an active class.
+     * Only creates invoices for the current month if the class is active and no invoice exists yet.
+     */
+    async generateInvoiceForNewStudents(
+        classId: string,
+        students: { studentId: string; discountPercent: number }[],
+    ): Promise<{ generated: number; skipped: number }> {
+        const logger = new Logger('AutoInvoice');
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+
+        // Get class info
+        const classEntity = await this.paymentsRepository.manager
+            .getRepository('class')
+            .findOne({ where: { id: classId } }) as any;
+
+        if (!classEntity || classEntity.status !== 'active') {
+            logger.log(`Class ${classId} is not active, skipping invoice generation`);
+            return { generated: 0, skipped: students.length };
+        }
+
+        // Check existing invoices for this month to avoid duplicates
+        const existingPayments = await this.paymentsRepository.find({
+            where: {
+                month: currentMonth,
+                year: currentYear,
+                classId,
+                studentId: In(students.map(s => s.studentId)),
+            },
+        });
+        const existingStudentIds = new Set(existingPayments.map(p => p.studentId));
+
+        // Calculate remaining lessons in current month (pro-rata)
+        const daysOfWeek: string[] = classEntity.schedule?.days_of_week || [];
+        const feePerLesson = classEntity.feePerLesson || 0;
+
+        if (daysOfWeek.length === 0 || feePerLesson <= 0) {
+            logger.log(`Class ${classId} has no schedule or zero fee, skipping`);
+            return { generated: 0, skipped: students.length };
+        }
+
+        // Count remaining lesson days from today to end of month
+        const endOfMonth = new Date(currentYear, currentMonth, 0); // last day of current month
+        let remainingLessons = 0;
+        const tempDate = new Date(now);
+        tempDate.setDate(tempDate.getDate() + 1); // start from tomorrow
+
+        while (tempDate <= endOfMonth) {
+            const dayOfWeek = tempDate.getDay().toString(); // 0=Sunday, 1=Monday...
+            if (daysOfWeek.includes(dayOfWeek)) {
+                remainingLessons++;
+            }
+            tempDate.setDate(tempDate.getDate() + 1);
+        }
+
+        if (remainingLessons <= 0) {
+            logger.log(`No remaining lessons in ${currentMonth}/${currentYear} for class ${classId}`);
+            return { generated: 0, skipped: students.length };
+        }
+
+        const newPayments: PaymentEntity[] = [];
+        let skipped = 0;
+
+        for (const student of students) {
+            if (existingStudentIds.has(student.studentId)) {
+                skipped++;
+                continue;
+            }
+
+            const totalAmount = remainingLessons * feePerLesson;
+
+            const payment = this.paymentsRepository.create({
+                month: currentMonth,
+                year: currentYear,
+                totalLessons: remainingLessons,
+                totalAmount,
+                discountPercent: student.discountPercent || 0,
+                studentId: student.studentId,
+                classId,
+            });
+
+            newPayments.push(payment);
+        }
+
+        if (newPayments.length > 0) {
+            await this.paymentsRepository.save(newPayments);
+            logger.log(
+                `Auto-generated ${newPayments.length} pro-rata invoices for class ${classId} ` +
+                `(${remainingLessons} remaining lessons, ${feePerLesson}/lesson)`,
+            );
+        }
+
+        return { generated: newPayments.length, skipped };
+    }
 }
