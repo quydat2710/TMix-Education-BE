@@ -8,6 +8,7 @@ import { ClassEntity } from '../classes/entities/class.entity';
 import { PaymentEntity } from '../payments/entities/payment.entity';
 import { TeacherPaymentEntity } from '../teacher-payments/entities/teacher-payment.entity';
 import { RegistrationEntity } from '../registrations/entities/registration.entity';
+import { TransactionEntity } from '../transactions/entities/transaction.entity';
 
 @Injectable()
 export class DashboardRepository {
@@ -26,6 +27,8 @@ export class DashboardRepository {
     private readonly teacherPaymentRepository: Repository<TeacherPaymentEntity>,
     @InjectRepository(RegistrationEntity)
     private readonly registrationRepository: Repository<RegistrationEntity>,
+    @InjectRepository(TransactionEntity)
+    private readonly transactionRepository: Repository<TransactionEntity>,
   ) { }
 
   async getAdminDashboard() {
@@ -99,6 +102,9 @@ export class DashboardRepository {
     const recentlySalary = recentTeacherPayments.map((payment) => ({
       name: payment.teacher?.name || 'Unknown',
       paidAmount: payment.paidAmount,
+      totalAmount: payment.totalAmount,
+      month: payment.month,
+      year: payment.year,
       status: payment.status,
     }));
 
@@ -473,19 +479,45 @@ export class DashboardRepository {
       .orderBy('tp.month', 'ASC')
       .getRawMany();
 
+    // Thu/Chi khác từ bảng transaction (tiền điện nước, thuê phòng, phí thi thử...)
+    const otherTransactions = await this.transactionRepository
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.category', 'cat')
+      .where('EXTRACT(YEAR FROM t.transactionAt) = :year', { year })
+      .andWhere('t.deletedAt IS NULL')
+      .getMany();
+
+    // Group other transactions by month & type
+    const otherRevenueByMonth: Record<number, number> = {};
+    const otherExpenseByMonth: Record<number, number> = {};
+    for (const t of otherTransactions) {
+      const m = new Date(t.transactionAt).getMonth() + 1;
+      if (t.category?.type === 'revenue') {
+        otherRevenueByMonth[m] = (otherRevenueByMonth[m] || 0) + (t.amount || 0);
+      } else if (t.category?.type === 'expense') {
+        otherExpenseByMonth[m] = (otherExpenseByMonth[m] || 0) + (t.amount || 0);
+      }
+    }
+
     // Map dữ liệu vào 12 tháng
     const monthlyData = Array.from({ length: 12 }, (_, i) => {
       const month = i + 1;
       const rev = revenueRaw.find(r => Number(r.month) === month);
       const exp = expenseRaw.find(e => Number(e.month) === month);
+      const tuitionRevenue = Number(rev?.revenue) || 0;
+      const salaryExpense = Number(exp?.expense) || 0;
+      const otherRev = otherRevenueByMonth[month] || 0;
+      const otherExp = otherExpenseByMonth[month] || 0;
+      const totalRev = tuitionRevenue + otherRev;
+      const totalExp = salaryExpense + otherExp;
       return {
         month,
         monthName: `Th${month}`,
-        revenue: Number(rev?.revenue) || 0,
-        totalRevenue: Number(rev?.totalRevenue) || 0,
-        expense: Number(exp?.expense) || 0,
-        totalExpense: Number(exp?.totalExpense) || 0,
-        profit: (Number(rev?.revenue) || 0) - (Number(exp?.expense) || 0),
+        revenue: totalRev,
+        totalRevenue: (Number(rev?.totalRevenue) || 0) + otherRev,
+        expense: totalExp,
+        totalExpense: (Number(exp?.totalExpense) || 0) + otherExp,
+        profit: totalRev - totalExp,
       };
     });
 

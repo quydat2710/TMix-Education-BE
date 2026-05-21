@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AllConfigType } from "config/config.type";
-import { MailerService } from "modules/mailer/mailer.service";
+import { MailTransportService } from "./mail-transport.service";
 import { MailData } from "./mail.interface";
 import path from "path";
 import dayjs from "dayjs";
@@ -12,7 +12,7 @@ import { MaybeType } from "utils/types/maybe.type";
 @Injectable()
 export class MailService {
     constructor(
-        private mailerService: MailerService,
+        private mailTransport: MailTransportService,
         private configService: ConfigService<AllConfigType>,
         private i18nService: I18nService<I18nTranslations>,
     ) { }
@@ -38,7 +38,7 @@ export class MailService {
         ])
 
 
-        await this.mailerService.sendMail({
+        await this.mailTransport.sendMail({
             to: mailData.to,
             subject: title,
             text: `${title}`,
@@ -77,7 +77,7 @@ export class MailService {
             this.i18nService.t('forgot-password.TEXT_4')
         ])
 
-        await this.mailerService.sendMail({
+        await this.mailTransport.sendMail({
             to: mailData.to,
             subject: title,
             text: `${title}`,

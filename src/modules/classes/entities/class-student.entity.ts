@@ -1,5 +1,5 @@
 import { StudentEntity } from "modules/students/entities/student.entity";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinTable, ManyToOne, PrimaryColumn, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from "typeorm";
 import { ClassEntity } from "modules/classes/entities/class.entity";
 import { Exclude } from "class-transformer";
 
@@ -7,11 +7,11 @@ import { Exclude } from "class-transformer";
 export class ClassStudentEntity {
     @PrimaryColumn()
     @Exclude({ toPlainOnly: true })
-    studentId: string | number;
+    studentId: string;
 
     @PrimaryColumn()
     @Exclude({ toPlainOnly: true })
-    classId: string | number;
+    classId: string;
 
     @Column()
     discountPercent: number
@@ -20,11 +20,11 @@ export class ClassStudentEntity {
     isActive: boolean;
 
     @ManyToOne(() => StudentEntity, (student) => student.classes)
-    @JoinTable({ name: 'studentId' })
+    @JoinColumn({ name: 'studentId' })
     student?: StudentEntity
 
     @ManyToOne(() => ClassEntity, (aclass) => aclass.students, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
-    @JoinTable({ name: 'studentId' })
+    @JoinColumn({ name: 'classId' })
     class?: ClassEntity
 
     @CreateDateColumn({ type: "timestamp" })

@@ -16,8 +16,9 @@ export class TypeOrmConfigService implements TypeOrmOptionsFactory {
             password: this.configService.get('database.password', { infer: true }),
             database: this.configService.get('database.dbName', { infer: true }),
             entities: [__dirname + '/../**/*.entity{.js,.ts}'],
+            migrations: [__dirname + '/migrations/*{.js,.ts}'],
             subscribers: [AuditSubscriber],
-            synchronize: this.configService.get('app.nodeEnv', { infer: true }) !== 'production',
+            synchronize: true, // TODO: Set to false after initial Docker setup
             ssl: this.configService.get('database.sslMode', { infer: true }) === 'require'
                 ? { rejectUnauthorized: false }
                 : false,

@@ -267,23 +267,48 @@ export class TtsController {
             return;
         }
 
+        const spd = speed || 1.0;
+        const voice = this.dictationService.getVoiceForSentence(id);
+        const cacheDir = path.join(process.cwd(), 'cache', 'dictation');
+        if (!fs.existsSync(cacheDir)) {
+            fs.mkdirSync(cacheDir, { recursive: true });
+        }
+        
+        const cacheFile = path.join(cacheDir, `${id}_${spd.toFixed(1)}.wav`);
+
         try {
-            const audioBuffer = await this.ttsService.synthesize(
-                sentence.text,
-                undefined,
-                speed || 1.0,
-            );
+            let audioBuffer: Buffer;
+
+            // 1. Check local NestJS cache first
+            if (fs.existsSync(cacheFile)) {
+                audioBuffer = fs.readFileSync(cacheFile);
+            } else {
+                // 2. Not in cache -> call Python TTS Server
+                const buffer = await this.ttsService.synthesize(
+                    sentence.text,
+                    voice,
+                    spd,
+                );
+                
+                if (!buffer) {
+                    throw new Error('TTS Service returned null');
+                }
+                audioBuffer = buffer;
+
+                // 3. Save to local cache
+                fs.writeFileSync(cacheFile, audioBuffer);
+            }
 
             res.set({
                 'Content-Type': 'audio/wav',
                 'Content-Length': audioBuffer.length.toString(),
-                'Cache-Control': 'no-store',
+                'Cache-Control': 'public, max-age=31536000', // Cache in browser for 1 year
             });
             res.send(audioBuffer);
         } catch (error) {
             res.status(503).json({
                 statusCode: 503,
-                message: 'TTS Server unavailable',
+                message: 'TTS Server unavailable and no cached audio found',
             });
         }
     }
@@ -298,6 +323,7 @@ export class TtsController {
     checkDictation(
         @Body('id') id: string,
         @Body('answer') answer: string,
+        @Body('forceReveal') forceReveal: boolean,
         @Res() res: Response,
     ) {
         if (!id || !answer?.trim()) {
@@ -305,7 +331,7 @@ export class TtsController {
             return;
         }
 
-        const result = this.dictationService.checkAnswer(id, answer.trim());
+        const result = this.dictationService.checkAnswer(id, answer.trim(), !!forceReveal);
         if (!result) {
             res.status(404).json({ statusCode: 404, message: 'Sentence not found' });
             return;

@@ -10,6 +10,7 @@ import { ClassEntity } from '../classes/entities/class.entity';
 import { DashboardRepository } from './dashboard.repository';
 import { TeacherEntity } from '../teachers/entities/teacher.entity';
 import { ParentEntity } from '../parents/entities/parent.entity';
+import { TransactionEntity } from '../transactions/entities/transaction.entity';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ParentEntity } from '../parents/entities/parent.entity';
       ClassEntity,
       TeacherEntity,
       ParentEntity,
+      TransactionEntity,
     ]),
   ],
   controllers: [DashboardController],

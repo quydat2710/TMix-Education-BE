@@ -19,5 +19,5 @@ export class StudentEntity extends UserEntity {
     attendance: AttendanceSessionEntity[]
 
     @OneToMany(() => PaymentEntity, payments => payments.student)
-    payments: PaymentEntity
+    payments: PaymentEntity[]
 }

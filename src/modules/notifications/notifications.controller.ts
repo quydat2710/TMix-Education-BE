@@ -26,13 +26,15 @@ export class NotificationsController {
 
   /**
    * SSE endpoint — realtime notification stream for the authenticated user
-   * Client connects via EventSource to receive notifications as they happen
+   * Client connects via EventSource to receive notifications as they happen.
+   * Includes heartbeat every 25s to prevent proxy/server from closing idle connections.
    */
   @Sse('stream')
   stream(@UserInfo() user: any): Observable<MessageEvent> {
     const userId = user.id;
 
     return new Observable<MessageEvent>((subscriber) => {
+      // Handler for real notifications
       const handler = (notification: any) => {
         subscriber.next({
           data: JSON.stringify(notification),
@@ -43,8 +45,17 @@ export class NotificationsController {
       // Listen for events targeted at this user
       this.eventEmitter.on(`notification.${userId}`, handler);
 
+      // Heartbeat every 25s to keep connection alive
+      const heartbeat = setInterval(() => {
+        subscriber.next({
+          data: JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }),
+          type: 'heartbeat',
+        } as MessageEvent);
+      }, 25000);
+
       // Cleanup when client disconnects
       return () => {
+        clearInterval(heartbeat);
         this.eventEmitter.removeListener(`notification.${userId}`, handler);
       };
     });

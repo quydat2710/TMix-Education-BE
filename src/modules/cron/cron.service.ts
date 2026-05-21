@@ -1,16 +1,28 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ClassesService } from 'modules/classes/classes.service';
 import { PaymentsService } from 'modules/payments/payments.service';
 import { AuditSubscriber } from 'subscribers/audit-log.subscriber';
 @Injectable()
-export class CronService {
+export class CronService implements OnModuleInit {
   private readonly logger = new Logger(CronService.name);
 
   constructor(
     private readonly classesService: ClassesService,
     private readonly paymentsService: PaymentsService,
   ) {}
+
+  async onModuleInit() {
+    // Cập nhật status lớp học ngay khi server khởi động
+    try {
+      AuditSubscriber.skipAuditLog = true;
+      const result = await this.classesService.updateClassStatus();
+      AuditSubscriber.skipAuditLog = false;
+      this.logger.log(`[Startup] Class status updated: ${result.updated}/${result.checked} classes`);
+    } catch (e) {
+      this.logger.warn(`[Startup] Failed to update class status: ${e.message}`);
+    }
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async updateClassStatusCron() {

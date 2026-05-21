@@ -47,7 +47,7 @@ export class PaymentEntity {
     studentId: Student['id'];
 
     @Column()
-    classId: Student['id'];
+    classId: ClassEntity['id'];
 
     @ManyToOne(() => StudentEntity, student => student.payments)
     @JoinColumn({ name: 'studentId' })

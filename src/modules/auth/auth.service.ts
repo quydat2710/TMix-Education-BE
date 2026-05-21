@@ -22,7 +22,7 @@ export class AuthService {
     private otpService: OtpService
   ) { }
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(email: string, pass: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
     const isValid = await this.usersService.isValidPassword(pass, user?.password || '')
     if (isValid) return user;
@@ -60,7 +60,7 @@ export class AuthService {
     }
   }
 
-  createRefreshToken = (payload: any) => {
+  createRefreshToken = (payload: { sub: string; iss: string; id: string; name: string; email: string | null; role: unknown }) => {
     const refresh_token = this.jwtService.sign(payload, {
       secret: this.configService.get('jwt.jwt_refresh_secret', { infer: true }),
       expiresIn: this.configService.get('jwt.jwt_refresh_expiration_days', { infer: true })

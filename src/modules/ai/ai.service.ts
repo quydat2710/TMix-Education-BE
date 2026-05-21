@@ -98,7 +98,7 @@ export class AiService {
             const grading = this.groqService.parseJsonResponse<SpeakingGrading>(response);
             grading.transcription = transcription;
 
-            // Recalculate overallScore server-side (AI is bad at arithmetic)
+            // Recalculate overallScore server-side
             const pr = grading.pronunciation?.score || 0;
             const fl = grading.fluency?.score || 0;
             const vo = grading.vocabulary?.score || 0;
@@ -138,4 +138,6 @@ export class AiService {
             detailedFeedback: 'Hệ thống AI chấm điểm hiện không khả dụng. Vui lòng liên hệ giáo viên để được chấm điểm thủ công.'
         };
     }
+
+
 }

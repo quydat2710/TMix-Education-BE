@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository, ILike, In, Between } from 'typeorm';
+import { FindOptionsWhere, Repository, ILike, In, Between, Not } from 'typeorm';
 import { ClassEntity } from './entities/class.entity';
 import { Class } from './class.domain';
 import { ClassMapper } from './class.mapper';
@@ -388,6 +388,9 @@ export class ClassRepository {
 
     if (filterOptions?.status) {
       where.status = filterOptions.status;
+    } else {
+      // Mặc định ẩn lớp đã kết thúc khỏi trang public
+      where.status = Not('closed');
     }
 
     if (filterOptions?.room) {

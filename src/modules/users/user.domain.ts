@@ -31,5 +31,5 @@ export class User {
 
     updatedAt: Date;
 
-    deletedAt: Date;
+    deletedAt?: Date;
 }

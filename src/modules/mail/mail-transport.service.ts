@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AllConfigType } from 'config/config.type';
+import { AllConfigType } from '@/config/config.type';
 import nodemailer from 'nodemailer'
 import Handlebars from 'handlebars';
 import fs from 'fs/promises';
 
 @Injectable()
-export class MailerService {
+export class MailTransportService {
   private transporter: nodemailer.Transporter
 
   constructor(private configService: ConfigService<AllConfigType>) {

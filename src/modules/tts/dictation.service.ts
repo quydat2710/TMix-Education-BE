@@ -61,6 +61,13 @@ const SENTENCE_BANK: DictationSentence[] = [
 export class DictationService {
     private sentences = SENTENCE_BANK;
 
+    /** Round-robin voice assignment for diverse listening practice */
+    private static readonly VOICE_ROTATION = [
+        'en_US-lessac-medium',  // Female US
+        'en_US-ryan-medium',    // Male US
+        'en_GB-alba-medium',    // Female UK
+    ];
+
     /** Get a random sentence by level. Returns id + level + category (NO text!) */
     getRandomSentence(level?: string): { id: string; level: string; category: string } {
         let pool = this.sentences;
@@ -76,12 +83,19 @@ export class DictationService {
         return this.sentences.find(s => s.id === id);
     }
 
+    /** Get deterministic voice for a sentence (based on its index in the bank) */
+    getVoiceForSentence(id: string): string {
+        const index = this.sentences.findIndex(s => s.id === id);
+        const voices = DictationService.VOICE_ROTATION;
+        return voices[(index >= 0 ? index : 0) % voices.length];
+    }
+
     /** 
      * Compare user answer with original sentence.
      * Case-insensitive, word-by-word comparison.
      * Only reveals original sentence if 100% correct.
      */
-    checkAnswer(id: string, userAnswer: string): DictationCheckResult | null {
+    checkAnswer(id: string, userAnswer: string, forceReveal: boolean = false): DictationCheckResult | null {
         const sentence = this.getSentenceById(id);
         if (!sentence) return null;
 
@@ -123,7 +137,7 @@ export class DictationService {
             totalWords: expectedWords.length,
             correctWords: correctCount,
             wordResults,
-            originalSentence: isCorrect ? sentence.text : undefined,
+            originalSentence: (isCorrect || forceReveal) ? sentence.text : undefined,
         };
     }
 }

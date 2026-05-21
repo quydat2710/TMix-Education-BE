@@ -51,7 +51,7 @@ export class StudentsService {
 
   async update(id: Student['id'], updateStudentDto: UpdateStudentDto) {
     if (updateStudentDto && updateStudentDto.email) {
-      this.usersService.isEmailExist(updateStudentDto?.email);
+      await this.usersService.isEmailExist(updateStudentDto?.email);
     }
     return this.studentRepository.update(id, updateStudentDto);
   }

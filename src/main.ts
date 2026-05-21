@@ -33,7 +33,7 @@ async function bootstrap() {
   const isDevMode = configService.get('app.nodeEnv', { infer: true }) !== 'production';
   const corsOrigins: string[] = [configService.get('app.frontendDomain', { infer: true })];
   if (isDevMode) {
-    corsOrigins.push('http://localhost:3000');
+    corsOrigins.push('http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002');
   }
   app.enableCors({
     origin: corsOrigins,

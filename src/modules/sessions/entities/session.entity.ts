@@ -1,5 +1,5 @@
 import { ClassEntity } from "modules/classes/entities/class.entity";
-import { Column, Entity, JoinTable, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { AttendanceSessionEntity } from "./attendance-session.entity";
 import { Class } from "modules/classes/class.domain";
 
@@ -14,8 +14,8 @@ export class SessionEntity {
     @Column()
     date: Date
 
-    @ManyToOne(() => ClassEntity, aclass => aclass.session)
-    @JoinTable({ name: 'classId' })
+    @ManyToOne(() => ClassEntity, aclass => aclass.sessions)
+    @JoinColumn({ name: 'classId' })
     class?: ClassEntity
 
     @OneToMany(() => AttendanceSessionEntity, attendanceSession => attendanceSession.session)

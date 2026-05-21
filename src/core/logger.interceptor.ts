@@ -27,6 +27,11 @@ export class HttpLoggerInterceptor implements NestInterceptor {
         const { method, originalUrl } = req;
         const userInfor = name && email ? `${name}:${email}` : 'Guest User';
 
+        // Skip logging for SSE stream endpoints (too noisy due to heartbeats)
+        if (originalUrl?.includes('/notifications/stream')) {
+            return next.handle();
+        }
+
         ClsServiceManager.getClsService().set('user', req.user ?? null);
         ClsServiceManager.getClsService().set('method', req.method ?? null);
         ClsServiceManager.getClsService().set('path', req.originalUrl ?? null);

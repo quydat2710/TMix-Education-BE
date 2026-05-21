@@ -14,6 +14,9 @@ import { UserMapper } from './user.mapper';
 import { User } from './user.domain';
 import { FilesService } from 'modules/files/files.service';
 
+/** Union type for all role-specific entities */
+type RoleEntity = UserEntity | ParentEntity | StudentEntity | TeacherEntity;
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -25,6 +28,20 @@ export class UsersService {
     @InjectRepository(TeacherEntity) private teacherRepository: Repository<TeacherEntity>,
     private readonly filesService: FilesService
   ) { }
+
+  /**
+   * Get the repository for a given role ID.
+   * Centralizes the role→repository mapping used across all user operations.
+   */
+  private getRepositoryByRole(roleId: number): Repository<RoleEntity> {
+    const map: Record<number, Repository<RoleEntity>> = {
+      [RoleEnum.admin]: this.userRepository,
+      [RoleEnum.teacher]: this.teacherRepository,
+      [RoleEnum.parent]: this.parentRepository,
+      [RoleEnum.student]: this.studentRepository,
+    };
+    return map[roleId];
+  }
 
   async isEmailExist(email: string): Promise<boolean> {
     const [user, teacher, parent, student] = await Promise.all([
@@ -68,91 +85,59 @@ export class UsersService {
     return UserMapper.toDomain(newEntity);
   }
 
-  async updateUserToken(user: any, refreshToken: string): Promise<void> {
+  async updateUserToken(user: { id: string; role?: { id: number } }, refreshToken: string): Promise<void> {
     const roleId = user.role?.id;
-
-    const updateMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-
-    const repository = updateMap[roleId];
+    const repository = this.getRepositoryByRole(roleId);
     if (repository) {
-      await repository.update({ id: user.id }, { refreshToken });
+      await repository.update({ id: user.id }, { refreshToken } as any);
     }
   }
 
-  async findUserByToken(role: any, refreshToken: string): Promise<UserEntity | ParentEntity | StudentEntity | TeacherEntity | null> {
+  async findUserByToken(role: { id: number }, refreshToken: string): Promise<RoleEntity | null> {
     const roleId = role?.id;
-
-    const repositoryMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-
-    const repository = repositoryMap[roleId];
-    return repository ? await repository.findOne({ where: { refreshToken }, relations: ['role'] }) : null;
+    const repository = this.getRepositoryByRole(roleId);
+    return repository ? await repository.findOne({ where: { refreshToken } as any, relations: ['role'] }) : null;
   }
 
   async uploadAvatar(imageUrl: string, publicId: string, user: User): Promise<void> {
     const roleId = user?.role?.id;
+    const repository = this.getRepositoryByRole(roleId);
+    if (!repository) return;
 
-    const repositoryMap: Record<string, { repo: Repository<any> }> = {
-      [RoleEnum.admin]: { repo: this.userRepository },
-      [RoleEnum.teacher]: { repo: this.teacherRepository },
-      [RoleEnum.parent]: { repo: this.parentRepository },
-      [RoleEnum.student]: { repo: this.studentRepository },
-    };
-
-    const config = repositoryMap[roleId];
-    if (!config) return;
-
-    const entity = await config.repo.findOne({ where: { id: user.id } });
+    const entity = await repository.findOne({ where: { id: user.id } as any });
     if (!entity) {
       throw new NotFoundException(this.i18nService.t('user.FAIL.NOT_FOUND'));
     }
 
-    if (entity && entity.publicId && entity.avatar) {
-      await this.filesService.deleteFile(entity.publicId);
-      entity.avatar = null;
-      entity.publicId = null
+    if (entity && (entity as any).publicId && (entity as any).avatar) {
+      await this.filesService.deleteFile((entity as any).publicId);
+      (entity as any).avatar = null;
+      (entity as any).publicId = null;
     }
 
-    if (roleId !== RoleEnum.admin && entity.avatar && entity.publicId) {
+    if (roleId !== RoleEnum.admin && (entity as any).avatar && (entity as any).publicId) {
       throw new BadRequestException('Avatar already exists. Please delete the current avatar before uploading a new one.');
     }
 
-    entity.avatar = imageUrl;
-    entity.publicId = publicId;
-    await config.repo.save(entity);
+    (entity as any).avatar = imageUrl;
+    (entity as any).publicId = publicId;
+    await repository.save(entity);
   }
 
   async updateProfile(userId: User['id'], updateData: { name?: string; phone?: string; gender?: string; address?: string; dayOfBirth?: Date }) {
-    // Find user in all repositories
     const user = await this.findUserById(userId);
     if (!user) {
       throw new NotFoundException(this.i18nService.t('user.FAIL.NOT_FOUND'));
     }
 
     const roleId = user.role?.id;
-    const repositoryMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-
-    const repository = repositoryMap[roleId];
+    const repository = this.getRepositoryByRole(roleId);
     if (!repository) {
       throw new BadRequestException('Invalid role');
     }
 
     // Update only allowed fields
-    const allowedFields: Record<string, any> = {};
+    const allowedFields: Partial<Pick<User, 'name' | 'phone' | 'gender' | 'address' | 'dayOfBirth'>> = {};
     if (updateData.name !== undefined) allowedFields.name = updateData.name;
     if (updateData.phone !== undefined) allowedFields.phone = updateData.phone;
     if (updateData.gender !== undefined) allowedFields.gender = updateData.gender;
@@ -163,9 +148,9 @@ export class UsersService {
       throw new BadRequestException('No valid fields to update');
     }
 
-    await repository.update({ id: userId }, allowedFields);
+    await repository.update({ id: userId } as any, allowedFields as any);
 
-    return await repository.findOne({ where: { id: userId }, relations: ['role'] });
+    return await repository.findOne({ where: { id: userId } as any, relations: ['role'] });
   }
 
   async findUserById(userId: User['id']) {
@@ -179,43 +164,29 @@ export class UsersService {
     return user || parent || student || teacher || null;
   }
 
-  async assignRole(userId: string, roleId: RoleEnum): Promise<UserEntity | ParentEntity | StudentEntity | TeacherEntity> {
-    // Find the user in all possible tables
+  async assignRole(userId: string, roleId: RoleEnum): Promise<RoleEntity> {
     const user = await this.findUserById(userId);
 
     if (!user) {
       throw new NotFoundException(this.i18nService.t('user.FAIL.NOT_FOUND'));
     }
 
-    // Get the current role to determine which repository to use
     const currentRoleId = user.role?.id;
-
-    const repositoryMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-
-    const repository = repositoryMap[currentRoleId] || this.userRepository;
+    const repository = this.getRepositoryByRole(currentRoleId) || this.userRepository;
 
     if (!repository) {
       throw new BadRequestException('Invalid current role');
     }
 
-    // Update the role
     await repository.update(
-      { id: userId },
-      { role: { id: roleId } }
+      { id: userId } as any,
+      { role: { id: roleId } } as any
     );
 
-    // Fetch and return the updated user
-    const updatedUser = await repository.findOne({
-      where: { id: userId },
+    return await repository.findOne({
+      where: { id: userId } as any,
       relations: ['role']
     });
-
-    return updatedUser;
   }
 
   async resetPassword(email: string, newPassword: string) {
@@ -224,13 +195,7 @@ export class UsersService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
     const roleId = user.role?.id;
-    const repositoryMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-    const repository = repositoryMap[roleId] || this.userRepository;
+    const repository = this.getRepositoryByRole(roleId) || this.userRepository;
     user.password = newPassword;
     return await repository.save(user);
   }
@@ -241,13 +206,7 @@ export class UsersService {
       throw new NotFoundException('Không tìm thấy người dùng');
     }
     const roleId = user.role?.id;
-    const repositoryMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-    const repository = repositoryMap[roleId] || this.userRepository;
+    const repository = this.getRepositoryByRole(roleId) || this.userRepository;
     user.password = newPassword;
     await repository.save(user);
     return { message: 'Đặt lại mật khẩu thành công' };
@@ -255,16 +214,7 @@ export class UsersService {
 
   async setVerifiedEmail(id: User['id'], user: UserEntity) {
     const currentRoleId = user.role?.id;
-
-    const repositoryMap: Record<string, Repository<any>> = {
-      [RoleEnum.admin]: this.userRepository,
-      [RoleEnum.teacher]: this.teacherRepository,
-      [RoleEnum.parent]: this.parentRepository,
-      [RoleEnum.student]: this.studentRepository,
-    };
-
-    const repository = repositoryMap[currentRoleId] || this.userRepository;
-
-    return await repository.update({ id: user.id }, { isEmailVerified: true })
+    const repository = this.getRepositoryByRole(currentRoleId) || this.userRepository;
+    return await repository.update({ id: user.id } as any, { isEmailVerified: true } as any);
   }
 }

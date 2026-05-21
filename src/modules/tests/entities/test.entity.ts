@@ -14,7 +14,7 @@ export class MCQuestion {
     question: string;
 
     @Column("text", { array: true })
-    options: string[]; // 4 options (A, B, C, D)
+    options: string[]; // 2-6 options (dynamic)
 
     @Column()
     correctAnswer: number; // Index 0-3
@@ -85,6 +85,9 @@ export class TestEntity {
 
     @Column('jsonb', { default: [] })
     questions: any[]; // MCQuestion[] | WritingQuestion[] | SpeakingQuestion[]
+
+    @Column('jsonb', { default: [] })
+    sections: any[]; // TestSection[] — optional grouping for multi-part tests
 
     @Column({ nullable: true })
     audioUrl: string; // Main audio URL (listening test)

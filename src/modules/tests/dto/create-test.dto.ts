@@ -11,7 +11,6 @@ class CreateMCQuestionDto {
 
     @IsNumber()
     @Min(0)
-    @Max(3)
     correctAnswer: number;
 
     @IsOptional()
@@ -69,4 +68,8 @@ export class CreateTestDto {
     @IsOptional()
     @IsEnum(['draft', 'published'])
     status?: string;
+
+    @IsOptional()
+    @IsArray()
+    sections?: any[]; // TestSection[] — optional multi-part grouping
 }

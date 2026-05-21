@@ -34,5 +34,5 @@ export class TeacherEntity extends UserEntity {
     classes: ClassEntity[]
 
     @OneToMany(() => TeacherPaymentEntity, payment => payment.teacher)
-    payments: TeacherPaymentEntity
+    payments: TeacherPaymentEntity[]
 }

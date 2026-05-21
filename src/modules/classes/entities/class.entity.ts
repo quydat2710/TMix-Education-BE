@@ -77,6 +77,6 @@ export class ClassEntity {
     teacher: TeacherEntity
 
     @OneToMany(() => SessionEntity, session => session.class)
-    session: SessionEntity
+    sessions: SessionEntity[]
 }
 

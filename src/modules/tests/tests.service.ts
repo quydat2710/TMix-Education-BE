@@ -36,17 +36,29 @@ export class TestsService {
      */
     async create(teacherId: string, createTestDto: CreateTestDto): Promise<TestEntity> {
         // Add IDs to questions and calculate total points
-        const questions = createTestDto.questions.map((q, index) => ({
-            ...q,
-            id: uuidv4(),
-        }));
+        const idMapping: Record<string, string> = {}; // oldId -> newId
+        const questions = createTestDto.questions.map((q, index) => {
+            const newId = uuidv4();
+            if ((q as any).id) idMapping[(q as any).id] = newId;
+            return { ...q, id: newId };
+        });
 
         const totalPoints = questions.reduce((sum, q) => sum + (q.points || 10), 0);
+
+        // Update section questionIds with new UUIDs
+        let sections = createTestDto.sections || [];
+        if (sections.length > 0 && Object.keys(idMapping).length > 0) {
+            sections = sections.map((s: any) => ({
+                ...s,
+                questionIds: (s.questionIds || []).map((oldId: string) => idMapping[oldId] || oldId),
+            }));
+        }
 
         const test = this.testRepository.create({
             ...createTestDto,
             teacherId,
             questions,
+            sections,
             totalPoints,
             status: createTestDto.status || 'draft',
         });
@@ -117,12 +129,23 @@ export class TestsService {
 
         // Recalculate totalPoints if questions changed
         if (updateTestDto.questions) {
-            const questions = updateTestDto.questions.map((q, index) => ({
-                ...q,
-                id: (q as any).id || uuidv4(),
-            }));
+            const idMapping: Record<string, string> = {};
+            const questions = updateTestDto.questions.map((q, index) => {
+                const oldId = (q as any).id;
+                const newId = oldId || uuidv4();
+                if (oldId && oldId !== newId) idMapping[oldId] = newId;
+                return { ...q, id: newId };
+            });
             updateTestDto.questions = questions;
             (updateTestDto as any).totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+            // Update section questionIds if sections exist
+            if (updateTestDto.sections && updateTestDto.sections.length > 0 && Object.keys(idMapping).length > 0) {
+                updateTestDto.sections = updateTestDto.sections.map((s: any) => ({
+                    ...s,
+                    questionIds: (s.questionIds || []).map((oldId: string) => idMapping[oldId] || oldId),
+                }));
+            }
         }
 
         Object.assign(test, updateTestDto);
@@ -326,7 +349,6 @@ export class TestsService {
         // Auto-grade
         let score = 0;
         const feedback: string[] = [];
-        const optionLabels = ['A', 'B', 'C', 'D'];
 
         for (let i = 0; i < test.questions.length; i++) {
             const question = test.questions[i];
@@ -337,7 +359,7 @@ export class TestsService {
                 score += question.points;
                 feedback.push(`Câu ${i + 1}: ✅ Chính xác! ${question.explanation || ''}`);
             } else {
-                const correctLabel = optionLabels[question.correctAnswer] || '?';
+                const correctLabel = String.fromCharCode(65 + (question.correctAnswer || 0));
                 feedback.push(
                     `Câu ${i + 1}: ❌ Sai. Đáp án đúng là ${correctLabel}. ${question.explanation || ''}`,
                 );
@@ -707,4 +729,6 @@ export class TestsService {
             gradedAt: attempt.gradedAt,
         };
     }
+
 }
+

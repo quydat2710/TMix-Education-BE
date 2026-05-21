@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\modules",
+    "\\src\\modules\\ai",
+    "\\src\\modules\\ai\\prompts"
+  ],
+  "SelectedNode": "\\src\\modules\\ai\\prompts\\grading.prompts.ts",
+  "PreviewInSolutionExplorer": false
+}

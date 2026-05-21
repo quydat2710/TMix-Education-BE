@@ -14,7 +14,7 @@ export class GroqService {
             return;
         }
 
-        this.client = new Groq({ apiKey });
+        this.client = new Groq({ apiKey, timeout: 60000 });
         this.logger.log('Groq initialized with model: llama-3.3-70b-versatile');
     }
 
@@ -43,9 +43,10 @@ export class GroqService {
 
                 return completion.choices[0]?.message?.content || '';
             } catch (error: any) {
-                if (error?.status === 429 && attempt < retries) {
-                    const waitTime = 10 + attempt * 5;
-                    this.logger.warn(`Rate limited (429). Retrying in ${waitTime}s... (attempt ${attempt + 1}/${retries})`);
+                const isRetryable = error?.status === 429 || error?.message?.includes('timed out') || error?.code === 'ETIMEDOUT';
+                if (isRetryable && attempt < retries) {
+                    const waitTime = error?.status === 429 ? 10 + attempt * 5 : 3 + attempt * 2;
+                    this.logger.warn(`Groq error (${error?.status || error?.code || 'timeout'}). Retrying in ${waitTime}s... (attempt ${attempt + 1}/${retries})`);
                     await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
                     continue;
                 }
@@ -79,9 +80,10 @@ export class GroqService {
 
                 return completion.choices[0]?.message?.content || '';
             } catch (error: any) {
-                if (error?.status === 429 && attempt < retries) {
-                    const waitTime = 10 + attempt * 5;
-                    this.logger.warn(`Rate limited (429). Retrying in ${waitTime}s...`);
+                const isRetryable = error?.status === 429 || error?.message?.includes('timed out') || error?.code === 'ETIMEDOUT';
+                if (isRetryable && attempt < retries) {
+                    const waitTime = error?.status === 429 ? 10 + attempt * 5 : 3 + attempt * 2;
+                    this.logger.warn(`Groq error (${error?.status || error?.code || 'timeout'}). Retrying in ${waitTime}s...`);
                     await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
                     continue;
                 }

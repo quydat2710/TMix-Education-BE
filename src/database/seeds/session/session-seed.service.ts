@@ -40,8 +40,9 @@ export class SessionSeedService {
             const endDate = new Date(schedule.end_date);
             const daysOfWeek = schedule.days_of_week.map(d => parseInt(d));
 
-            // For active classes, only create sessions up to "today" (2026-06-12)
-            const today = new Date('2026-06-12');
+            // For active classes, only create sessions up to today
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             const sessionEndDate = aclass.status === 'active'
                 ? (endDate < today ? endDate : today)
                 : endDate;
