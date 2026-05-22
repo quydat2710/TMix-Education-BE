@@ -14,6 +14,7 @@ export enum NotificationType {
   NEW_REGISTRATION = 'new_registration',
   SCHEDULE_CHANGE = 'schedule_change',
   ATTENDANCE_UPDATE = 'attendance_update',
+  ATTENDANCE_REMINDER = 'attendance_reminder',
   NEW_INVOICE = 'new_invoice',
   GENERAL = 'general',
 }

@@ -50,4 +50,12 @@ export class SessionsService {
   getClassSessionsInMonth(classId: Class['id'], month: number, year: number) {
     return this.sessionRepository.getClassSessionsInMonth(classId, month, year);
   }
+
+  createSessionForClass(classId: Class['id']) {
+    return this.sessionRepository.create(classId);
+  }
+
+  hasSessionToday(classId: Class['id']): Promise<boolean> {
+    return this.sessionRepository.hasSessionToday(classId);
+  }
 }

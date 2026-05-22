@@ -418,6 +418,15 @@ export class SessionRepository {
       where: { classId }
     })
   }
+
+  async hasSessionToday(classId: Class['id']): Promise<boolean> {
+    const todayStart = dayjs().startOf('day').toDate();
+    const todayEnd = dayjs().endOf('day').toDate();
+    const count = await this.sessionRepository.count({
+      where: { classId, date: Between(todayStart, todayEnd) },
+    });
+    return count > 0;
+  }
 }
 
 

@@ -2,7 +2,12 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ClassesService } from 'modules/classes/classes.service';
 import { PaymentsService } from 'modules/payments/payments.service';
+import { SessionsService } from 'modules/sessions/sessions.service';
+import { NotificationsService } from 'modules/notifications/notifications.service';
+import { NotificationType } from 'modules/notifications/entities/notification.entity';
 import { AuditSubscriber } from 'subscribers/audit-log.subscriber';
+import dayjs from '@/utils/dayjs.config';
+
 @Injectable()
 export class CronService implements OnModuleInit {
   private readonly logger = new Logger(CronService.name);
@@ -10,6 +15,8 @@ export class CronService implements OnModuleInit {
   constructor(
     private readonly classesService: ClassesService,
     private readonly paymentsService: PaymentsService,
+    private readonly sessionsService: SessionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async onModuleInit() {
@@ -53,6 +60,101 @@ export class CronService implements OnModuleInit {
       return result;
     } catch (error) {
       this.logger.error(`[Cron] Invoice generation failed for ${month}/${year}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Nhắc nhở giáo viên điểm danh — chạy mỗi 30 phút từ 8:00 đến 21:30.
+   * Chỉ nhắc cho lớp đã qua giờ kết thúc buổi học và chưa được điểm danh.
+   * De-duplicate: chỉ gửi 1 lần/ngày/lớp (kiểm tra notification đã gửi qua link field).
+   */
+  @Cron('0 */30 8-21 * *')
+  async remindAttendanceCron() {
+    this.logger.log('[Cron] Checking attendance reminders...');
+
+    try {
+      const classes = await this.classesService.getActiveClassesScheduledToday();
+      const now = dayjs();
+      let reminded = 0;
+
+      for (const cls of classes) {
+        // Chỉ nhắc cho lớp đã qua giờ kết thúc
+        const endTime = dayjs().hour(
+          parseInt(cls.schedule.time_slots.end_time.split(':')[0])
+        ).minute(
+          parseInt(cls.schedule.time_slots.end_time.split(':')[1])
+        ).second(0);
+
+        if (now.isBefore(endTime)) continue;
+
+        // Kiểm tra đã có session hôm nay chưa
+        const hasSession = await this.sessionsService.hasSessionToday(cls.id);
+        if (hasSession) continue;
+
+        // Kiểm tra giáo viên có được gán cho lớp không
+        if (!cls.teacher?.id) continue;
+
+        // De-duplicate: kiểm tra đã gửi reminder hôm nay cho lớp này chưa
+        const alreadySent = await this.notificationsService.hasNotificationToday(
+          cls.teacher.id,
+          NotificationType.ATTENDANCE_REMINDER,
+          `attendance-reminder:${cls.id}`,
+        );
+        if (alreadySent) continue;
+
+        // Gửi notification nhắc nhở
+        await this.notificationsService.sendToUser(cls.teacher.id, {
+          type: NotificationType.ATTENDANCE_REMINDER,
+          title: '⏰ Nhắc điểm danh',
+          message: `Lớp ${cls.name} hôm nay chưa được điểm danh. Vui lòng điểm danh trước 22:00 để tránh hệ thống tự tạo phiên vắng mặt.`,
+          link: `attendance-reminder:${cls.id}`,
+        });
+        reminded++;
+      }
+
+      if (reminded > 0) {
+        this.logger.log(`[Cron] Attendance reminder sent for ${reminded} classes`);
+      }
+    } catch (error) {
+      this.logger.error(`[Cron] Attendance reminder failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Tự động tạo phiên điểm danh — chạy lúc 22:00 hàng ngày.
+   * Tạo session cho các lớp có lịch học hôm nay nhưng chưa được điểm danh.
+   * Tất cả học sinh mặc định "vắng mặt". Giáo viên có 24h để chỉnh sửa.
+   */
+  @Cron('0 22 * * *')
+  async autoCreateAttendanceCron() {
+    this.logger.log('[Cron] Auto-creating attendance sessions...');
+
+    try {
+      const classes = await this.classesService.getActiveClassesScheduledToday();
+      let created = 0;
+
+      for (const cls of classes) {
+        const hasSession = await this.sessionsService.hasSessionToday(cls.id);
+        if (hasSession) continue;
+
+        // Tự động tạo session với tất cả học sinh là "absent"
+        await this.sessionsService.createSessionForClass(cls.id);
+        created++;
+
+        // Gửi thông báo cho giáo viên
+        if (cls.teacher?.id) {
+          await this.notificationsService.sendToUser(cls.teacher.id, {
+            type: NotificationType.ATTENDANCE_REMINDER,
+            title: '📋 Tự động điểm danh',
+            message: `Hệ thống đã tự động tạo phiên điểm danh cho lớp ${cls.name} với trạng thái mặc định "vắng mặt". Bạn có thể chỉnh sửa trong vòng 24 giờ.`,
+            link: `auto-attendance:${cls.id}`,
+          });
+        }
+      }
+
+      this.logger.log(`[Cron] Auto-created ${created} attendance sessions`);
+    } catch (error) {
+      this.logger.error(`[Cron] Auto-create attendance failed: ${error.message}`);
     }
   }
 

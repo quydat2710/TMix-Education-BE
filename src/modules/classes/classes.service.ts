@@ -289,4 +289,18 @@ export class ClassesService {
   async getInfoForBanner(id: Class['id']) {
     return this.classRepository.getInfoForBanner(id);
   }
+
+  async getActiveClassesScheduledToday(): Promise<Class[]> {
+    const allClasses = await this.classRepository.findAll();
+    const today = dayjs();
+    const todayDow = today.day().toString();
+
+    return allClasses.filter(cls => {
+      if (cls.status !== 'active') return false;
+      const start = dayjs(cls.schedule.start_date);
+      const end = dayjs(cls.schedule.end_date);
+      if (today.isBefore(start, 'day') || today.isAfter(end, 'day')) return false;
+      return cls.schedule.days_of_week.includes(todayDow);
+    });
+  }
 }

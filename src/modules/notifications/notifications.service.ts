@@ -246,6 +246,29 @@ export class NotificationsService {
   }
 
   /**
+   * Check if a notification with specific type and link was already sent today.
+   * Used for de-duplicating cron-based notifications (e.g., attendance reminders).
+   */
+  async hasNotificationToday(
+    recipientId: string,
+    type: NotificationType,
+    link: string,
+  ): Promise<boolean> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const count = await this.notificationRepo
+      .createQueryBuilder('notification')
+      .where('notification.recipientId = :recipientId', { recipientId })
+      .andWhere('notification.type = :type', { type })
+      .andWhere('notification.link = :link', { link })
+      .andWhere('notification.createdAt >= :todayStart', { todayStart })
+      .getCount();
+
+    return count > 0;
+  }
+
+  /**
    * Mark a single notification as read
    */
   async markAsRead(notificationId: string, userId: string): Promise<NotificationEntity> {
