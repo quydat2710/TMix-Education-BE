@@ -11,7 +11,7 @@ import {
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { ResponseMessage } from '@/decorator/customize.decorator';
+import { ResponseMessage, UserInfo } from '@/decorator/customize.decorator';
 import { QueryDto } from 'utils/types/query.dto';
 import { FilterStudentDto, SortStudentDto } from './dto/query-student.dto';
 import { Student } from './student.domain';
@@ -54,6 +54,22 @@ export class StudentsController {
   @Get('schedule/:id')
   getSchedule(@Param('id') id: Student['id']) {
     return this.studentsService.getSchedule(id);
+  }
+
+  /**
+   * Get test attempts for a student.
+   * Parent role: verifies parent-child relationship.
+   * Admin/Teacher: allowed directly.
+   * GET /students/:studentId/test-attempts
+   */
+  @Get(':studentId/test-attempts')
+  getTestAttempts(
+    @UserInfo() user: any,
+    @Param('studentId') studentId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ) {
+    return this.studentsService.getTestAttempts(user, studentId, +page, +limit);
   }
 
   @Get(':id')
