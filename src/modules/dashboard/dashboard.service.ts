@@ -33,4 +33,8 @@ export class DashboardService {
   }) {
     return this.dashboardRepository.getAllPaymentsForDashboard(params);
   }
+
+  getLearningAnalytics(year?: number) {
+    return this.dashboardRepository.getLearningAnalytics(year);
+  }
 }

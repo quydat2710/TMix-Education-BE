@@ -11,6 +11,8 @@ import { DashboardRepository } from './dashboard.repository';
 import { TeacherEntity } from '../teachers/entities/teacher.entity';
 import { ParentEntity } from '../parents/entities/parent.entity';
 import { TransactionEntity } from '../transactions/entities/transaction.entity';
+import { TestEntity } from '../tests/entities/test.entity';
+import { TestAttemptEntity } from '../tests/entities/test-attempt.entity';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { TransactionEntity } from '../transactions/entities/transaction.entity';
       TeacherEntity,
       ParentEntity,
       TransactionEntity,
+      TestEntity,
+      TestAttemptEntity,
     ]),
   ],
   controllers: [DashboardController],

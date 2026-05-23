@@ -116,6 +116,31 @@ export class PaymentsService {
     classId: string,
     students: { studentId: string; discountPercent: number }[],
   ) {
-    return this.paymentRepository.generateInvoiceForNewStudents(classId, students);
+    const result = await this.paymentRepository.generateInvoiceForNewStudents(classId, students);
+
+    // Notify parents about new pro-rata invoices
+    if (result?.payments?.length > 0) {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      for (const payment of result.payments) {
+        try {
+          const amount = payment.totalAmount?.toLocaleString('vi-VN') || '0';
+          await this.notificationsService.sendToParentOfStudent(payment.studentId, {
+            type: NotificationType.NEW_INVOICE,
+            title: `Học phí lớp ${result.className}`,
+            message: `Con bạn vừa được thêm vào lớp ${result.className}. Học phí tháng ${currentMonth}/${currentYear} là ${amount}đ (${payment.totalLessons} buổi còn lại). Vui lòng thanh toán sớm.`,
+            link: '/parent/payments',
+          });
+        } catch (e) {
+          this.logger.warn(`Failed to send new-student invoice notification for student ${payment.studentId}: ${e.message}`);
+        }
+      }
+
+      this.logger.log(`Sent ${result.payments.length} invoice notifications for new students in class ${classId}`);
+    }
+
+    return result;
   }
 }

@@ -34,6 +34,13 @@ export class DashboardController {
     });
   }
 
+  @Get('learning-analytics')
+  @ResponseMessage('dashboard.SUCCESS.GET_ADMIN_DASHBOARD')
+  getLearningAnalytics(@Query('year') year?: string) {
+    const yearNum = year ? parseInt(year) : undefined;
+    return this.dashboardService.getLearningAnalytics(yearNum);
+  }
+
   @Get('teacher/:teacherId')
   @ResponseMessage('dashboard.SUCCESS.GET_TEACHER_DASHBOARD')
   getTeacherDashboard(@Param('teacherId') teacherId: string) {

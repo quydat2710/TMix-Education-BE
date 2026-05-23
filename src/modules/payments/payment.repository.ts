@@ -394,7 +394,7 @@ export class PaymentRepository {
     async generateInvoiceForNewStudents(
         classId: string,
         students: { studentId: string; discountPercent: number }[],
-    ): Promise<{ generated: number; skipped: number }> {
+    ): Promise<{ generated: number; skipped: number; payments: PaymentEntity[]; className: string }> {
         const logger = new Logger('AutoInvoice');
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
@@ -407,7 +407,7 @@ export class PaymentRepository {
 
         if (!classEntity || classEntity.status !== 'active') {
             logger.log(`Class ${classId} is not active, skipping invoice generation`);
-            return { generated: 0, skipped: students.length };
+            return { generated: 0, skipped: students.length, payments: [], className: '' };
         }
 
         // Check existing invoices for this month to avoid duplicates
@@ -427,7 +427,7 @@ export class PaymentRepository {
 
         if (daysOfWeek.length === 0 || feePerLesson <= 0) {
             logger.log(`Class ${classId} has no schedule or zero fee, skipping`);
-            return { generated: 0, skipped: students.length };
+            return { generated: 0, skipped: students.length, payments: [], className: classEntity.name || '' };
         }
 
         // Count remaining lesson days from today to end of month
@@ -446,7 +446,7 @@ export class PaymentRepository {
 
         if (remainingLessons <= 0) {
             logger.log(`No remaining lessons in ${currentMonth}/${currentYear} for class ${classId}`);
-            return { generated: 0, skipped: students.length };
+            return { generated: 0, skipped: students.length, payments: [], className: classEntity.name || '' };
         }
 
         const newPayments: PaymentEntity[] = [];
@@ -481,6 +481,6 @@ export class PaymentRepository {
             );
         }
 
-        return { generated: newPayments.length, skipped };
+        return { generated: newPayments.length, skipped, payments: newPayments, className: classEntity.name || '' };
     }
 }

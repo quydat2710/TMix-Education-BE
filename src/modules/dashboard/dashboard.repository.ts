@@ -9,6 +9,8 @@ import { PaymentEntity } from '../payments/entities/payment.entity';
 import { TeacherPaymentEntity } from '../teacher-payments/entities/teacher-payment.entity';
 import { RegistrationEntity } from '../registrations/entities/registration.entity';
 import { TransactionEntity } from '../transactions/entities/transaction.entity';
+import { TestEntity } from '../tests/entities/test.entity';
+import { TestAttemptEntity } from '../tests/entities/test-attempt.entity';
 
 @Injectable()
 export class DashboardRepository {
@@ -29,6 +31,10 @@ export class DashboardRepository {
     private readonly registrationRepository: Repository<RegistrationEntity>,
     @InjectRepository(TransactionEntity)
     private readonly transactionRepository: Repository<TransactionEntity>,
+    @InjectRepository(TestEntity)
+    private readonly testRepository: Repository<TestEntity>,
+    @InjectRepository(TestAttemptEntity)
+    private readonly testAttemptRepository: Repository<TestAttemptEntity>,
   ) { }
 
   async getAdminDashboard() {
@@ -532,6 +538,124 @@ export class DashboardRepository {
         totalExpense,
         profit: totalRevenue - totalExpense,
       },
+    };
+  }
+
+  /**
+   * Learning Analytics: Test Performance by Skill + Class Ranking
+   */
+  async getLearningAnalytics(year?: number) {
+    // ── 1. Test Performance by Skill Type ──
+    const skillQb = this.testAttemptRepository
+      .createQueryBuilder('ta')
+      .innerJoin('ta.test', 't')
+      .select('t.skillType', 'skillType')
+      .addSelect('COUNT(ta.id)', 'totalAttempts')
+      .addSelect('AVG(ta.percentage)', 'avgScore')
+      .addSelect('SUM(CASE WHEN ta.passed = true THEN 1 ELSE 0 END)', 'passedCount')
+      .addSelect('COUNT(DISTINCT ta.studentId)', 'uniqueStudents')
+      .where('t.deletedAt IS NULL');
+
+    if (year) {
+      skillQb.andWhere('EXTRACT(YEAR FROM ta.submittedAt) = :year', { year });
+    }
+
+    const skillStats = await skillQb.groupBy('t.skillType').getRawMany();
+
+    const testPerformance = skillStats.map(s => ({
+      skillType: s.skillType || 'reading',
+      totalAttempts: Number(s.totalAttempts) || 0,
+      avgScore: Math.round((Number(s.avgScore) || 0) * 10) / 10,
+      passRate: Number(s.totalAttempts) > 0
+        ? Math.round((Number(s.passedCount) / Number(s.totalAttempts)) * 100)
+        : 0,
+      uniqueStudents: Number(s.uniqueStudents) || 0,
+    }));
+
+    // Overall summary
+    const totalAttempts = testPerformance.reduce((s, p) => s + p.totalAttempts, 0);
+    const totalPassed = skillStats.reduce((s, p) => s + (Number(p.passedCount) || 0), 0);
+    const overallAvg = totalAttempts > 0
+      ? Math.round(testPerformance.reduce((s, p) => s + p.avgScore * p.totalAttempts, 0) / totalAttempts * 10) / 10
+      : 0;
+
+    // ── 2. Class Ranking (test scores + attendance) ──
+    // Test scores per class
+    const classQb = this.testAttemptRepository
+      .createQueryBuilder('ta')
+      .innerJoin('ta.test', 't')
+      .innerJoin('t.class', 'c')
+      .select('t.classId', 'classId')
+      .addSelect('c.name', 'className')
+      .addSelect('AVG(ta.percentage)', 'avgTestScore')
+      .addSelect('COUNT(ta.id)', 'totalAttempts')
+      .addSelect('SUM(CASE WHEN ta.passed = true THEN 1 ELSE 0 END)', 'passedCount')
+      .where('t.deletedAt IS NULL')
+      .andWhere('c.status = :status', { status: 'active' });
+
+    if (year) {
+      classQb.andWhere('EXTRACT(YEAR FROM ta.submittedAt) = :year', { year });
+    }
+
+    const classTestStats = await classQb
+      .groupBy('t.classId')
+      .addGroupBy('c.name')
+      .getRawMany();
+
+    // Attendance per class
+    const yearFilter = year ? `AND EXTRACT(YEAR FROM s.date) = ${year}` : '';
+    const classAttendance: any[] = await this.studentRepository.manager.query(`
+      SELECT s."classId",
+        COUNT(*) as "totalRecords",
+        SUM(CASE WHEN a.status = 'present' OR a.status = 'late' THEN 1 ELSE 0 END) as "presentCount"
+      FROM attendance_session a
+      JOIN sessions s ON a."sessionId" = s.id
+      WHERE 1=1 ${yearFilter}
+      GROUP BY s."classId"
+    `);
+
+    const attendanceMap = new Map<string, { total: number; present: number }>();
+    for (const row of classAttendance) {
+      attendanceMap.set(row.classId, {
+        total: Number(row.totalRecords) || 0,
+        present: Number(row.presentCount) || 0,
+      });
+    }
+
+    const classRanking = classTestStats.map(cls => {
+      const att = attendanceMap.get(cls.classId);
+      const attendanceRate = att && att.total > 0
+        ? Math.round((att.present / att.total) * 100)
+        : 0;
+      const avgTestScore = Math.round((Number(cls.avgTestScore) || 0) * 10) / 10;
+      const passRate = Number(cls.totalAttempts) > 0
+        ? Math.round((Number(cls.passedCount) / Number(cls.totalAttempts)) * 100)
+        : 0;
+      // Combined score: 60% test + 40% attendance
+      const compositeScore = Math.round(avgTestScore * 0.6 + attendanceRate * 0.4);
+
+      return {
+        classId: cls.classId,
+        className: cls.className,
+        avgTestScore,
+        passRate,
+        totalAttempts: Number(cls.totalAttempts) || 0,
+        attendanceRate,
+        compositeScore,
+      };
+    }).sort((a, b) => b.compositeScore - a.compositeScore);
+
+    return {
+      testPerformance,
+      summary: {
+        totalAttempts,
+        overallAvgScore: overallAvg,
+        overallPassRate: totalAttempts > 0 ? Math.round((totalPassed / totalAttempts) * 100) : 0,
+        totalStudentsTested: new Set(testPerformance.map(p => p.uniqueStudents)).size > 0
+          ? testPerformance.reduce((s, p) => s + p.uniqueStudents, 0)
+          : 0,
+      },
+      classRanking,
     };
   }
 }
