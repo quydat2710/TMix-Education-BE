@@ -549,14 +549,16 @@ export class TestsService {
             throw new BadRequestException('Writing response cannot be empty');
         }
 
-        // Get prompt and rubric from test questions
+        // Get prompt, rubric, and word count requirements from test questions
         const writingQuestion = test.questions[0];
         const prompt = writingQuestion?.prompt || test.passage || 'Write an essay';
         const rubric = writingQuestion?.rubric;
+        const minWords = writingQuestion?.minWords;
+        const maxWords = writingQuestion?.maxWords;
 
-        // Call AI for grading
-        this.logger.log(`Grading writing for test ${testId}, student ${studentId}`);
-        const aiGrading = await this.aiService.gradeWriting(writingResponse, prompt, rubric);
+        // Call AI for grading (context-aware with teacher's word count requirements)
+        this.logger.log(`Grading writing for test ${testId}, student ${studentId} (minWords=${minWords || 'default'}, maxWords=${maxWords || 'default'})`);
+        const aiGrading = await this.aiService.gradeWriting(writingResponse, prompt, rubric, { minWords, maxWords });
 
         // Calculate score: AI gives 0-10, convert to points
         const maxPoints = test.totalPoints || 10;
@@ -632,10 +634,11 @@ export class TestsService {
         const speakingQuestion = test.questions[0];
         const prompt = speakingQuestion?.prompt || test.speakingPrompt || 'Read the text aloud';
         const referenceText = speakingQuestion?.referenceText || test.speakingPrompt || '';
+        const mode = referenceText.trim() ? 'read_aloud' : 'free_speaking';
 
         // Call AI for grading (transcription + text grading)
-        this.logger.log(`Grading speaking for test ${testId}, student ${studentId}`);
-        const aiGrading = await this.aiService.gradeSpeaking(filePath, prompt, referenceText);
+        this.logger.log(`Grading speaking for test ${testId}, student ${studentId} in mode: ${mode}`);
+        const aiGrading = await this.aiService.gradeSpeaking(filePath, prompt, referenceText, mode);
 
         // Upload recording to Cloudinary for teacher review
         let recordingUrl = '';

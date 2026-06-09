@@ -36,7 +36,7 @@ export class GroqService {
                         },
                     ],
                     model: 'llama-3.3-70b-versatile',
-                    temperature: 0.3,
+                    temperature: 0.1,
                     max_tokens: 4096,
                     response_format: { type: 'json_object' },
                 });
@@ -94,20 +94,20 @@ export class GroqService {
         throw new Error('Chat failed after all retries');
     }
 
-    /**
-     * Transcribe audio using Groq Whisper (for Speaking tests)
-     */
-    async transcribeAudio(audioFilePath: string): Promise<string> {
+    async transcribeAudio(audioFilePath: string): Promise<{ text: string; duration: number }> {
         try {
             const fs = await import('fs');
-            const transcription = await this.client.audio.transcriptions.create({
+            const transcription: any = await this.client.audio.transcriptions.create({
                 file: fs.createReadStream(audioFilePath),
                 model: 'whisper-large-v3',
                 language: 'en',
-                response_format: 'text',
+                response_format: 'verbose_json',
             });
 
-            return transcription as unknown as string;
+            return {
+                text: transcription.text || '',
+                duration: transcription.duration || 0,
+            };
         } catch (error: any) {
             this.logger.error(`Groq audio transcription failed: ${error.message}`);
             throw error;

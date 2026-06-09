@@ -192,6 +192,7 @@ export class TtsController {
         @UploadedFile() audioFile: Express.Multer.File,
         @Body('referenceText') referenceText: string,
         @Body('prompt') prompt: string,
+        @Body('mode') mode: string,
         @Res() res: Response,
     ) {
         if (!audioFile) {
@@ -199,7 +200,7 @@ export class TtsController {
             return;
         }
 
-        if (!referenceText?.trim()) {
+        if (!referenceText?.trim() && mode !== 'free_speaking') {
             res.status(400).json({ statusCode: 400, message: 'Reference text is required' });
             return;
         }
@@ -216,8 +217,9 @@ export class TtsController {
             // Use AI service to grade speaking
             const grading = await this.aiService.gradeSpeaking(
                 tmpFile,
-                prompt || 'Read the following text aloud clearly and naturally.',
-                referenceText.trim(),
+                prompt || (mode === 'free_speaking' ? 'Speak freely about the topic' : 'Read the following text aloud clearly and naturally.'),
+                referenceText?.trim() || '',
+                (mode as any) || 'read_aloud',
             );
 
             // Cleanup temp file
