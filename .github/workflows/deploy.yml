@@ -45,6 +45,6 @@ jobs:
             pm2 stop all || true
             pm2 delete all || true
             pm2 start /home/ubuntu/TMix-Education-BE/dist/main.js --name tmix-backend
-            pm2 start /home/ubuntu/TMix-TTS-Server/server.py --name tmix-tts --interpreter python3 || true
+            pm2 start /home/ubuntu/TMix-TTS-Server/tts-server.py --name tmix-tts --interpreter python3 || true
             pm2 save --force
             echo "✅ Backend deployed successfully!"
