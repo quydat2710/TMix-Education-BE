@@ -444,7 +444,7 @@ export class AiService {
             } else {
                 // For Read Aloud, calculate mathematical Accuracy and remove Vocabulary & Grammar (as they read a pre-written text)
                 const matchPct = this.calculateAccuracyPercentage(referenceText || '', transcription);
-                const accuracyScore = Math.round(matchPct / 10);
+                const accuracyScore = matchPct / 10;
                 
                 grading.accuracy = {
                     score: accuracyScore,
